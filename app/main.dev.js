@@ -60,7 +60,7 @@ app.on('ready', async () => {
   }
 
   mainWindow = new BrowserWindow({
-    show: false,
+    show: true,
     width: 1024,
     height: 728
   });
@@ -75,6 +75,7 @@ app.on('ready', async () => {
     }
     mainWindow.show();
     mainWindow.focus();
+    windowInit();
   });
 
   mainWindow.on('closed', () => {
@@ -84,3 +85,8 @@ app.on('ready', async () => {
   const menuBuilder = new MenuBuilder(mainWindow);
   menuBuilder.buildMenu();
 });
+
+function windowInit() {
+
+}
+
