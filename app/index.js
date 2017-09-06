@@ -1,3 +1,46 @@
+/*
+ import React from 'react';
+ import { render } from 'react-dom';
+ import { AppContainer } from 'react-hot-loader';
+ import Root from './containers/Root';
+ import { configureStore, history } from './store/configureStore';
+ import './app.global.css';
+
+ const store = configureStore();
+
+ render(
+ <AppContainer>
+ <Root store={store} history={history} />
+ </AppContainer>,
+ document.getElementById('root')
+ );
+
+ if (module.hot) {
+ module.hot.accept('./containers/Root', () => {
+ const NextRoot = require('./containers/Root'); // eslint-disable-line global-require
+ render(
+ <AppContainer>
+ <NextRoot store={store} history={history} />
+ </AppContainer>,
+ document.getElementById('root')
+ );
+ });
+ }
+ */
+
+
+import { remote, desktopCapturer} from 'electron';
+import connection from './connection';
+import peerlist from './peerlist';
+const net = require('net');
+const EventEmitter = require('events');
+const socketEmitter = new EventEmitter();
+
+
+console.log(peerlist);
+var roomid="local"
+const hb = new Map();
+
 console.log(process.argv);
 var processArgs=[];
 process.argv.forEach(function (item) {
@@ -6,17 +49,11 @@ process.argv.forEach(function (item) {
     processArgs=flags.split('&')
   }
 });
-
 console.log(processArgs);
 
-
-
-import { remote,desktopCapturer} from 'electron';
-
-
-var localStream;
-var source;
-
+console.log(connection);
+connection.userid=roomid;
+connection.socketCustomEvent = roomid;
 function handleError (e) {
   console.log(e)
 }
@@ -25,127 +62,11 @@ function handleError (e) {
 
 
 
-// ......................................................
-// .......................UI Code........................
-// ......................................................
-/*document.getElementById('open-room').onclick = function() {
-  disableInputButtons();
-  connection.sdpConstraints.mandatory = {
-    OfferToReceiveAudio: false,
-    OfferToReceiveVideo: false
-  };
-  connection.open(document.getElementById('room-id').value, function() {
-    showRoomURL(connection.sessionid);
-  });
-};*/
-// ......................................................
-// ..................RTCMultiConnection Code.............
-// ......................................................
-
-
-var connection = new RTCMultiConnection();
-
-
-connection.iceServers = [];
-
-// last step, set TURN url (recommended)
-connection.iceServers.push(
-  {url:'stun:stun.l.google.com:19302'},
-  {url:'stun:stun1.l.google.com:19302'},
-  {url:'stun:stun2.l.google.com:19302'},
-  {url:'stun:stun3.l.google.com:19302'},
-  {url:'stun:stun4.l.google.com:19302'},
-  {
-    urls: 'stun://numb.viagenie.ca',
-    credential: 'kemchep',
-    username: 'zeichenjoyce@gmail.com'
-  });
-
-
-window.connection=connection;
-connection.dontCaptureUserMedia = true;
-//connection.dontCaptureUserMedia = false;
-//connection.dontCaptureUserMedia = true
-//connection.dontAttachStream=true;
-
-//connection.codecs.video = 'VP8';
-
-connection.bandwidth = {
-  audio: 128,  // 50 kbps
-  video: 1500, // 256 kbps
-  screen: 1500 // 300 kbps
-};
-connection.codecs.video = 'H264';
-// by default, socket.io server is assumed to be deployed on your own URL
-connection.socketURL = 'https://cast.myviewboard.com/';
-
-connection.socketMessageEvent = 'video-broadcast';
-connection.session = {
-  screen: true,
-  oneway: true
-};
-
-
-//connection.videosContainer = document.getElementById('videos-container');
-
-connection.onstream = function(event) {
-  console.log('onstream',connection.attachStreams);
-  connection.attachStreams=[localStream];
-
-  //connection.videosContainer.appendChild(event.mediaElement);
-  //event.mediaElement.play();
-  setTimeout(function() {
-  //  event.mediaElement.play();
-  }, 5000);
-};
-
-// ......................................................
-// ......................Handling Room-ID................
-// ......................................................
-
-(function() {
-  var params = {},
-    r = /([^&=]+)=?([^&]*)/g;
-  function d(s) {
-    return decodeURIComponent(s.replace(/\+/g, ' '));
-  }
-  var match, search = window.location.search;
-  while (match = r.exec(search.substring(1)))
-    params[d(match[1])] = d(match[2]);
-  window.params = params;
-})();
-
-
-
-
-var roomid = 'local';
-
-if(processArgs.length>0){
- // roomid=processArgs[0].slice(processArgs[0].lastIndexOf("=")+1,processArgs[0].length);
-}
-
-if(roomid && roomid.length) {
-  //document.getElementById('room-id').value = roomid;
-  localStorage.setItem(connection.socketMessageEvent, roomid);
-  // auto-join-room
-  (function reCheckRoomPresence() {
-    connection.checkPresence(roomid, function(isRoomExists) {
-      if(isRoomExists) {
-        connection.join(roomid);
-        return;
-      }
-      setTimeout(reCheckRoomPresence, 5000);
-    });
-  })();
-}
-
-
 desktopCapturer.getSources({types: ['window', 'screen']}, (error, sources) => {
   if (error) throw error
   console.log(sources);
   for (let i = 0; i < sources.length; ++i) {
     if (sources[i].name === 'Entire screen') {
-      source=sources[i];
       console.log(sources[i])
       navigator.webkitGetUserMedia({
         audio: false,
@@ -159,26 +80,265 @@ desktopCapturer.getSources({types: ['window', 'screen']}, (error, sources) => {
             maxHeight: 720
           }
         }
-      }, function (stream) {
-        localStream=stream;
-        connection.addStream(stream);
-        if(connection.attachExternalStream){
-          //connection.attachExternalStream(stream,true);
-        }
-        connection.sdpConstraints.mandatory = {
-          OfferToReceiveAudio: false,
-          OfferToReceiveVideo: false
-        };
-        connection.open(roomid, function() {
-
-        });
-        console.log('desktopCapturer',stream);
-
-
-      }, handleError)
-      return
+      }, gotStream, handleError)
+      return;
     }
   }
 });
 
 
+function gotStream(stream) {
+  console.log(stream);
+connection.addStream(stream);
+
+  connection.checkPresence(roomid, function (isOnline, id, info) {
+    if (!connection.socket) connection.connectSocket();
+    connection.socket.on(connection.socketCustomEvent, function (message) {
+      if(message.guestInfo.name){}
+      var login=message.guestInfo.name?'true':'false'
+
+      if (message.messageFor == roomid) {
+        hb.set(message.guestId, 5);
+
+        if(message.action=='dropped'){
+
+        }
+        if(message.direction=='in'){
+          if(message.action=='open'){
+            if(message.guestInfo.sid){
+              peerlist.forEach(function (item,key) {
+                if(item.sid==message.guestInfo.sid && item.direction=='in'){
+                  connection.sendCustomMessage({
+                    messageFor: message.guestId,
+                    action: 'reject',
+                    hostId: roomid,
+                    guestInfo: connection.extra,
+                  })
+                  peerlist.delete(message.guestId);
+                  socketEmitter.emit('update')
+                  return;
+                }
+              });
+            }
+            let n_in=[...peerlist].filter(function(arr){return arr[1].direction=='in'}).length;
+            if(n_in===tier.cast_in_queue){
+              connection.sendCustomMessage({
+                messageFor: message.guestId,
+                action: 'exceed',
+                hostId: roomid,
+                guestInfo: connection.extra,
+              })
+              if(peerlist.get(message.guestId)){
+                peerlist.delete(message.guestId);
+              }
+              socketEmitter.emit('update')
+              return false;
+            }
+
+          }else{
+            //-----------------------------------------------------------------------------------------------//USER CASTIN START
+
+            if(message.action==="start"){
+              let n_in=[...peerlist].filter(function(arr){return arr[1].direction=='in'}).length;
+              console.log(n_in);
+              if(n_in===tier.cast_in_queue){
+                connection.sendCustomMessage({
+                  messageFor: message.guestId,
+                  action: 'exceed',
+                  hostId: roomid,
+                  guestInfo: connection.extra,
+                })
+                if(peerlist.get(message.guestId)){
+                  peerlist.delete(message.guestId);
+                }
+                socketEmitter.emit('update')
+                return false;
+              }
+            }
+
+            peerlist.set(message.guestId, {status: message.action, approved: 'false',login:login,direction:'in',url:message.url});
+            peerlist.get(message.guestId).createTime=Date.now();
+            if(message.guestInfo.sid){
+              peerlist.get(message.guestId).sid=message.guestInfo.sid;
+            }
+            console.log(peerlist);
+            socketEmitter.emit('update');
+            //-----------------------------------------------------------------------------------------------//USER CASTIN START
+          }
+
+          // if(message.action=='start'){
+          //
+          //
+          // }
+
+        }
+        if (message.action == 'join') {
+          console.log(message);
+          if(message.guestInfo.sid){
+            peerlist.forEach(function (item,key) {
+              if(item.sid==message.guestInfo.sid && item.direction=='out'){
+                connection.sendCustomMessage({
+                  messageFor: message.guestId,
+                  action: 'reject',
+                  hostId: roomid,
+                  guestInfo: connection.extra,
+                })
+                if(peerlist.get(message.guestId)){
+                  peerlist.delete(message.guestId);
+                }
+                return;
+              }
+            });
+          }
+
+          let n_out=[...peerlist].filter(function(arr){return arr[1].direction=='out'}).length;
+
+          console.log(n_out);
+
+          if(n_out===tier.cast_out_queue){
+            connection.sendCustomMessage({
+              messageFor: message.guestId,
+              action: 'exceed',
+              hostId: roomid,
+              guestInfo: connection.extra,
+            })
+            if(peerlist.get(message.guestId)){
+              peerlist.delete(message.guestId);
+            }
+            return;
+          }
+//-----------------------------------------------------------------------------------------------------------------------------------------------//USER JOIN
+          peerlist.set(message.guestId, {status: 'join', approved: 'false',login:login,direction:'out'});
+          peerlist.get(message.guestId).createTime=Date.now();
+          if(message.guestInfo.sid){
+            peerlist.get(message.guestId).sid=message.guestInfo.sid;
+          }
+          console.log(peerlist)
+          socketEmitter.emit('update')
+//-----------------------------------------------------------------------------------------------------------------------------------------------//USER JOIN
+        }
+        if (message.action == 'knock') {
+          //  console.log(message);
+          if (peerlist.get(message.guestId)) {
+            hb.set(message.guestId, 5);
+          }
+        }
+        if (message.action == 'stopped') {
+          console.log(message);
+          if( peerlist.get(message.guestId)){
+            peerlist.get(message.guestId).status='stop;';
+          }
+          socketEmitter.emit('update');
+        }
+
+        if (message.action == 'delete') {
+          peerlist.delete(message.guestId);
+          socketEmitter.emit('update')
+        }
+      }
+    })
+
+    connection.openOrJoin(roomid, 'password');
+
+    setTimeout(function () {
+      connection.becomePublicModerator('viewsonic');
+    },1000)
+
+  });
+
+  tcp_start();
+}
+
+connection.onstream = function (event) {
+
+};
+
+
+function tcp_start(){
+  const tcp = net.createServer(function (socket) {
+    socket.name = socket.remoteAddress + ":" + socket.remotePort;
+    socket.on('data', function (data) {
+      // socket.write(roomid);
+      console.log(data);
+
+      if (socket.remoteAddress != '::ffff:127.0.0.1') {
+        return;
+      }
+      tcpInHandler(data, socket);
+    });
+    if (socket.remoteAddress != '::ffff:127.0.0.1') {
+      return;
+    }
+
+    // Put this new client in the list
+    clients.push(socket);
+    window.clients = clients;
+    writeSocket(socket);
+
+    // Remove the client from the list when it leaves
+    socket.on('end', function () {
+      clients.splice(clients.indexOf(socket), 1);
+    });
+
+  }).listen(25552);
+}
+
+
+
+setInterval(function () {
+  hb.forEach(function (item, key) {
+    item = item-- <= 0 ? 0 : item--;
+    hb.set(key, item);
+  })
+  peerlist.forEach(function (item, key) {
+    if (hb.get(key) === 0) {
+      connection.getAllParticipants().forEach(function (item) {
+        if(key===item){
+          return false;
+        }
+      });
+      peerlist.delete(key);
+      hb.delete(key);
+      console.log(key,'is kicked');
+   //   window.peerlist=peerlist
+      socketEmitter.emit('update');
+    }
+  })
+
+  connection.getAllParticipants().forEach(function (item) {
+    if(peerlist.get(item)){
+
+    }else{
+      connection.sendCustomMessage({
+        messageFor: item,
+        action: 'stop',
+        hostId: roomid,
+        guestInfo: connection.extra,
+      })
+      connection.sendCustomMessage({
+        messageFor:item,
+        action: 'dropped',
+        hostId: roomid,
+        guestInfo: connection.extra,
+      })
+      //connection.close(item);
+    }
+  })
+
+//console.log(hb);
+  window.hb=hb;
+}, 2000);
+
+
+setInterval(()=> {
+  console.log(peerlist);
+
+
+  peerlist.forEach(function (item, key) {
+    if(hb.get(key)===undefined){
+      peerlist.delete(key);
+    //  window.peerlist=peerlist;
+      socketEmitter.emit('update');
+    };
+  })
+},5000);
