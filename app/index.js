@@ -28,43 +28,116 @@
  }
  */
 
-
+window.alert(process.argv);
 import { remote, desktopCapturer} from 'electron';
-import connection from './connection';
-import peerlist from './peerlist';
+import connection from './utils/connection';
+import peerlist from './utils/peerlist';
+const request=superagent;
 const net = require('net');
 const EventEmitter = require('events');
 const socketEmitter = new EventEmitter();
-
-
+const clients=[];
+const argv={uid:'',environment:'prod'}
+let hb=new Map();
+let tier={
+  cast_out_limit:-1,
+  cast_in_limit:-1,
+  cast_out_queue:-1,
+  cast_in_queue:-1
+}
 console.log(peerlist);
+
+
 var roomid="local"
-const hb = new Map();
+
 
 console.log(process.argv);
 var processArgs=[];
+
 process.argv.forEach(function (item) {
+  console.log(item);
   if(item.indexOf('--js-flags')!=-1){
     var flags=item.slice(item.indexOf('=')+1,item.length);
     processArgs=flags.split('&')
   }
 });
+
+
+
+document.querySelector('#output').innerHTML = process.argv;
+
+var apiUrl='https://ssi.myviewboard.com';
+switch (argv.environment){
+  case 'dev':
+    apiUrl='https://devapi.myviewboard.com';
+    break;
+  case 'stage':
+    apiUrl='https://stageapi.myviewboard.com';
+    break;
+  case 'prod':
+    apiUrl='https://ssi.myviewboard.com';
+    break;
+}
+argv.uid="71ba9a6a-9c7a-48b1-adfd-1fee0e04ee0c";
+var apiKey='';//aes256.encrypt(Date(),argv.uid);
+
+request.get(apiUrl+'/api/account/'+argv.uid+'/role')
+  .set('X-API-Key',apiKey)
+  .set('Accept', 'application/json')
+  .end(function (err, res) {
+    console.log(res.body.permission.name)
+    res.body.permission.sub_permission.forEach(function (item) {
+      console.log(item)
+      switch (item.name){
+        case "Cast Out":
+          tier.cast_out_limit=item.value;
+          break;
+        case "Cast In":
+          tier.cast_in_limit=item.value;
+          break;
+        case "Cast Out Queue":
+          tier.cast_out_queue=item.value;
+          break;
+        case "Cast In Queue":
+          tier.cast_in_queue=item.value;
+          break;
+      }
+    })
+  });
+
+
+
 console.log(processArgs);
 
 console.log(connection);
 connection.userid=roomid;
 connection.socketCustomEvent = roomid;
+
+
+connection.iceServers = [];
+
+request.get('https://cast.myviewboard.com/api/ice').end(function (err, res) {
+  connection.iceServers=connection.iceServers.concat(res.body);
+});
+
+
+request.get('https://wt0q02pbsc.execute-api.us-east-1.amazonaws.com/prod/geticeserv').set('x-api-key','EEgA3n9rOW7d9OeyRP8187ZupSsaFpEzDHVBX4b0').end(function (err, res) {
+  res.body.forEach(function (item) {
+    if(item.url.indexOf('turn')!==-1){
+      connection.iceServers=connection.iceServers.concat(item);
+    }
+  })
+});
+
+
 function handleError (e) {
   console.log(e)
 }
 
 
-
-
-
 desktopCapturer.getSources({types: ['window', 'screen']}, (error, sources) => {
   if (error) throw error
-  console.log(sources);
+
   for (let i = 0; i < sources.length; ++i) {
     if (sources[i].name === 'Entire screen') {
       console.log(sources[i])
@@ -283,6 +356,165 @@ function tcp_start(){
   }).listen(25552);
 }
 
+function writeSocket(socket) {
+
+  console.log(peerlist)
+  let obj = [];
+  peerlist.forEach(function (item, key) {
+    //console.log(item);
+    if(item){
+      if(key.indexOf('^')!=-1){
+        item.user=key.split('^')[0];
+        item.id=key.split('^')[1];
+      }
+      obj.push(item);
+    }
+  });
+
+  try {
+    socket.write(JSON.stringify(obj));
+    console.log(obj)
+  } catch (err) {
+
+    clients.splice(clients.indexOf(socket), 1);
+  }
+
+}
+
+function tcpInHandler(data,socket) {
+  console.log('frank says:',data.toString());
+  if(data=='ok'){
+  }else if (data == 'refresh') {
+    connection.getAllParticipants().forEach(function (item) {
+      //  peerlist.set(item, {status: 'play', approved: 'true'})
+      peerlist.get(item).status='play;';
+      peerlist.get(item).approved='true';
+    })
+
+    //socket.write(JSON.stringify([...peerlist]));
+    writeSocket(socket);
+  }else{
+
+
+    var lastlist=new Map(peerlist);
+    window.console.log(lastlist);
+
+    let dataobj = JSON.parse(data.toString().trim());
+    window.console.log(typeof dataobj,dataobj);
+
+    dataobj.forEach(function (item, key) {
+      let user = item.user+'^'+item.id;
+      delete item.user;
+      peerlist.set(user, item);
+    });
+    console.log(peerlist);
+
+    lastlist.forEach(function (item,key) {
+
+      if(peerlist.get(key)){
+
+        if(item.sid){
+          peerlist.get(key).sid=item.sid;
+        }
+
+        if(item.status===peerlist.get(key).status){
+          console.log(item,'unchanged')
+        }else{
+          console.log('changed',item);
+          if(peerlist.get(key).status==="play"){
+            connection.sendCustomMessage({
+              messageFor: key,
+              action: 'play',
+              hostId: roomid,
+              password: 'password',
+              guestInfo: connection.extra,
+            })
+          }
+          if(peerlist.get(key).status==="stop"){
+            connection.sendCustomMessage({
+              messageFor: key,
+              action: 'stop',
+              hostId: roomid,
+              password: 'password',
+              guestInfo: connection.extra,
+            })
+          }
+        }
+      }
+    })
+  }
+  socketEmitter.emit('update');
+}
+
+function socketInHandler(data,socket) {
+  console.log('frank says:',data.toString());
+  if(data=='ok'){
+  }else if (data == 'refresh') {
+    connection.getAllParticipants().forEach(function (item) {
+      //  peerlist.set(item, {status: 'play', approved: 'true'})
+      peerlist.get(item).status='play;';
+      peerlist.get(item).approved='true';
+    })
+
+    //socket.write(JSON.stringify([...peerlist]));
+    writeSocket(socket);
+  }
+  else{
+
+
+    var lastlist=new Map(window.peerlist);
+    window.console.log(lastlist);
+    let dataobj = JSON.parse(data.toString().trim());
+
+    if(dataobj.selectAudioSource){
+
+
+      return;
+    }
+
+
+
+    window.console.log(typeof dataobj,dataobj);
+    dataobj.forEach(function (item, key) {
+      console.log(item);
+      peerlist.set(item[0],item[1]);
+    });
+
+    window.console.log(peerlist);
+    window.console.log(lastlist);
+
+    lastlist.forEach(function (item,key) {
+      if(peerlist.get(key)){
+        if(item.status===peerlist.get(key).status){
+          console.log(item,'unchanged')
+        }else{
+          console.log('changed',item);
+          if(peerlist.get(key).status==="play"){
+            window.console.log(connection);
+            window.connection.sendCustomMessage({
+              messageFor: key,
+              action: 'play',
+              hostId: roomid,
+              password: 'password',
+              guestInfo: connection.extra,
+            })
+          }
+          if(peerlist.get(key).status==="stop"){
+            window.connection.sendCustomMessage({
+              messageFor: key,
+              action: 'stop',
+              hostId: roomid,
+              password: 'password',
+              guestInfo: connection.extra,
+            })
+          }
+        }
+      }
+    })
+  }
+  window.peerlist=peerlist;
+  socketEmitter.emit('update');
+}
 
 
 setInterval(function () {
@@ -300,7 +532,7 @@ setInterval(function () {
       peerlist.delete(key);
       hb.delete(key);
       console.log(key,'is kicked');
-   //   window.peerlist=peerlist
+      //   window.peerlist=peerlist
       socketEmitter.emit('update');
     }
   })
@@ -332,13 +564,12 @@ setInterval(function () {
 
 setInterval(()=> {
   console.log(peerlist);
-
-
   peerlist.forEach(function (item, key) {
     if(hb.get(key)===undefined){
       peerlist.delete(key);
-    //  window.peerlist=peerlist;
+      //  window.peerlist=peerlist;
       socketEmitter.emit('update');
     };
   })
 },5000);
+
