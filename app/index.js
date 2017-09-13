@@ -28,7 +28,8 @@
  }
  */
 
-window.alert(process.argv);
+import Rx from "rxjs/Rx";
+window.Observable=Rx.Observable;
 import { remote, desktopCapturer} from 'electron';
 import connection from './utils/connection';
 import peerlist from './utils/peerlist';
@@ -39,13 +40,12 @@ const socketEmitter = new EventEmitter();
 const clients=[];
 const argv={uid:'',environment:'prod'}
 let hb=new Map();
-let tier={
+const tier={
   cast_out_limit:-1,
   cast_in_limit:-1,
   cast_out_queue:-1,
   cast_in_queue:-1
 }
-console.log(peerlist);
 
 
 var roomid="local"
@@ -78,8 +78,8 @@ switch (argv.environment){
     apiUrl='https://ssi.myviewboard.com';
     break;
 }
-argv.uid="71ba9a6a-9c7a-48b1-adfd-1fee0e04ee0c";
-var apiKey='';//aes256.encrypt(Date(),argv.uid);
+argv.uid = "71ba9a6a-9c7a-48b1-adfd-1fee0e04ee0c";
+var apiKey = '';//aes256.encrypt(Date(),argv.uid);
 
 request.get(apiUrl+'/api/account/'+argv.uid+'/role')
   .set('X-API-Key',apiKey)
@@ -135,6 +135,10 @@ function handleError (e) {
 }
 
 
+Rx.Observable.from(Object.keys(tier)).map(item => item ).subscribe(
+  data=>{console.log(tier[data])}
+)
+
 desktopCapturer.getSources({types: ['window', 'screen']}, (error, sources) => {
   if (error) throw error
 
@@ -142,7 +146,7 @@ desktopCapturer.getSources({types: ['window', 'screen']}, (error, sources) => {
     if (sources[i].name === 'Entire screen') {
       console.log(sources[i])
       navigator.webkitGetUserMedia({
-        audio: false,
+        audio: connection.DetectRTC.audioOutputDevices.length > 0,
         video: {
           mandatory: {
             chromeMediaSource: 'desktop',
@@ -179,6 +183,7 @@ connection.addStream(stream);
         if(message.direction=='in'){
           if(message.action=='open'){
             if(message.guestInfo.sid){
+
               peerlist.forEach(function (item,key) {
                 if(item.sid==message.guestInfo.sid && item.direction=='in'){
                   connection.sendCustomMessage({
@@ -193,22 +198,21 @@ connection.addStream(stream);
                 }
               });
             }
-            let n_in=[...peerlist].filter(function(arr){return arr[1].direction=='in'}).length;
-            if(n_in===tier.cast_in_queue){
+            let n_in = [...peerlist].filter(function(arr){return arr[1].direction=='in'}).length;
+            if (n_in === tier.cast_in_queue){
               connection.sendCustomMessage({
                 messageFor: message.guestId,
                 action: 'exceed',
                 hostId: roomid,
                 guestInfo: connection.extra,
               })
-              if(peerlist.get(message.guestId)){
+              if (peerlist.get(message.guestId)){
                 peerlist.delete(message.guestId);
               }
               socketEmitter.emit('update')
               return false;
             }
-
-          }else{
+          } else {
             //-----------------------------------------------------------------------------------------------//USER CASTIN START
 
             if(message.action==="start"){
@@ -229,7 +233,7 @@ connection.addStream(stream);
               }
             }
 
-            peerlist.set(message.guestId, {status: message.action, approved: 'false',login:login,direction:'in',url:message.url});
+            peerlist.set(message.guestId, {status: message.action, approved: 'false',login:login,direction:'in',url:message.url,info:message.guestInfo});
             peerlist.get(message.guestId).createTime=Date.now();
             if(message.guestInfo.sid){
               peerlist.get(message.guestId).sid=message.guestInfo.sid;
@@ -281,7 +285,7 @@ connection.addStream(stream);
             return;
           }
 //-----------------------------------------------------------------------------------------------------------------------------------------------//USER JOIN
-          peerlist.set(message.guestId, {status: 'join', approved: 'false',login:login,direction:'out'});
+          peerlist.set(message.guestId, {status: 'join', approved: 'false',login:login,direction:'out',info:message.guestInfo});
           peerlist.get(message.guestId).createTime=Date.now();
           if(message.guestInfo.sid){
             peerlist.get(message.guestId).sid=message.guestInfo.sid;
@@ -322,9 +326,6 @@ connection.addStream(stream);
   tcp_start();
 }
 
-connection.onstream = function (event) {
-
-};
 
 
 function tcp_start(){
@@ -395,28 +396,22 @@ function tcpInHandler(data,socket) {
     writeSocket(socket);
   }else{
 
-
     var lastlist=new Map(peerlist);
-    window.console.log(lastlist);
-
     let dataobj = JSON.parse(data.toString().trim());
-    window.console.log(typeof dataobj,dataobj);
-
     dataobj.forEach(function (item, key) {
       let user = item.user+'^'+item.id;
       delete item.user;
       peerlist.set(user, item);
     });
-    console.log(peerlist);
 
     lastlist.forEach(function (item,key) {
-
       if(peerlist.get(key)){
-
         if(item.sid){
           peerlist.get(key).sid=item.sid;
         }
-
+        if(item.info){
+          peerlist.get(key).info=item.info;
+        }
         if(item.status===peerlist.get(key).status){
           console.log(item,'unchanged')
         }else{
@@ -427,7 +422,7 @@ function tcpInHandler(data,socket) {
               action: 'play',
               hostId: roomid,
               password: 'password',
-              guestInfo: connection.extra,
+              guestInfo: peerlist.info,
             })
           }
           if(peerlist.get(key).status==="stop"){
@@ -436,7 +431,7 @@ function tcpInHandler(data,socket) {
               action: 'stop',
               hostId: roomid,
               password: 'password',
-              guestInfo: connection.extra,
+              guestInfo: peerlist.info,
             })
           }
         }
@@ -563,7 +558,7 @@ setInterval(function () {
 
 
 setInterval(()=> {
-  console.log(peerlist);
+  //console.log(peerlist);
   peerlist.forEach(function (item, key) {
     if(hb.get(key)===undefined){
       peerlist.delete(key);
