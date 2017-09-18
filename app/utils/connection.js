@@ -1,5 +1,5 @@
 const connection = new RTCMultiConnection();
-window.connection=connection;
+window.connection = connection;
 connection.bandwidth = {
   audio: 128,  // 50 kbps
   video: 1500, // 256 kbps
@@ -13,4 +13,4 @@ connection.socketMessageEvent = 'video-broadcast';
 connection.codecs.video = 'H264';
 
 
-export default  connection;
+export default connection;
