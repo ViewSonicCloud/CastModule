@@ -105,12 +105,10 @@ connection.sendCustomMessage = function (message) {
   console.log(message);
   connection.socket.emit(connection.socketCustomEvent, message);
 };
-
 connection.iceServers = [];
 request.get('https://cast.myviewboard.com/api/ice').end((err, res) => {
   connection.iceServers = connection.iceServers.concat(res.body);
 });
-
 request.get('https://wt0q02pbsc.execute-api.us-east-1.amazonaws.com/prod/geticeserv').set('x-api-key', 'EEgA3n9rOW7d9OeyRP8187ZupSsaFpEzDHVBX4b0').end((err, res) => {
   res.body.forEach((item) => {
     if (item.url.indexOf('turn') !== -1) {
@@ -147,7 +145,7 @@ function gotStream(stream) {
   console.log(stream);
   connection.addStream(stream);
   request.post('https://lta1a2jg8g.execute-api.us-east-1.amazonaws.com/prod/signals').send(
-    {host: roomid, endpoints: []}).end(
+    {host: roomid, endpoints: [], server: 'https://cast-sig.myviewboard.com/'}).end(
     (err, res) => { SignalHandShake(); }
   );
 }
@@ -155,9 +153,7 @@ function SignalHandShake() {
   connection.checkPresence(roomid, (isOnline, id, info) => {
     if (!connection.socket) connection.connectSocket();
     connection.socket.on(connection.socketCustomEvent, (message) => {
-      if (message.guestInfo.name) {
-      }
-      const login = message.guestInfo.name ? 'true' : 'false';
+      const login = message.guestInfo.name ? 'true' : 'false' || 'false';
       if (message.messageFor === roomid) {
         hb.set(message.guestId, 5);
         if (message.action === 'dropped') {
@@ -169,7 +165,16 @@ function SignalHandShake() {
           console.log(message)
           socketEmitter.emit('update');
         }
+        if (message.action && message.action === 'setList') {
+          console.log(new Map(JSON.parse(message.desear)));
+          let lastlist = new Map(peerlist);
+          new Map(JSON.parse(message.desear)).forEach((item,key)=>{
+            peerlist.set(key, item);
+          })
 
+          console.log(peerlist);
+          peelistHandler(lastlist);
+        }
         if (message.direction && message.direction === 'in') {
           if (message.action === 'open') {
             if (message.guestInfo.sid) {
@@ -335,10 +340,9 @@ function tcp_start() {
   }).listen(25552);
 }
 socketEmitter.on('update', function (data) {
-  clients.forEach( (socket)=> {
+  clients.forEach((socket) => {
     writeSocket(socket);
   });
-
   connection.sendCustomMessage({
                                  messageFor: connection.socketCustomEvent,
                                  action: 'control',
@@ -378,7 +382,7 @@ function tcpInHandler(data, socket) {
     // socket.write(JSON.stringify([...peerlist]));
     writeSocket(socket);
   } else {
-    const lastlist = new Map(peerlist);
+    let lastlist = new Map(peerlist);
     const dataobj = JSON.parse(data.toString().trim());
     dataobj.forEach((item, key) => {
       const user = `${item.user}^${item.id}`;
@@ -444,39 +448,40 @@ function socketInHandler(data, socket) {
       console.log(item);
       peerlist.set(item[0], item[1]);
     });
-    window.console.log(peerlist);
-    window.console.log(lastlist);
-    lastlist.forEach((item, key) => {
-      if (peerlist.get(key)) {
-        if (item.status === peerlist.get(key).status) {
-          console.log(item, 'unchanged');
-        } else {
-          console.log('changed', item);
-          if (peerlist.get(key).status === 'play') {
-            window.console.log(connection);
-            window.connection.sendCustomMessage({
-                                                  messageFor: key,
-                                                  action: 'play',
-                                                  hostId: roomid,
-                                                  password: 'password',
-                                                  guestInfo: connection.extra,
-                                                });
-          }
-          if (peerlist.get(key).status === 'stop') {
-            window.connection.sendCustomMessage({
-                                                  messageFor: key,
-                                                  action: 'stop',
-                                                  hostId: roomid,
-                                                  password: 'password',
-                                                  guestInfo: connection.extra,
-                                                });
-          }
+    peelistHandler(lastlist);
+  }
+  socketEmitter.emit('update');
+}
+function peelistHandler(lastlist) {
+
+  lastlist.forEach((item, key) => {
+    if (peerlist.get(key)) {
+      if (item.status === peerlist.get(key).status) {
+        console.log(item, 'unchanged');
+      } else {
+        console.log('changed', item);
+        if (peerlist.get(key).status === 'play') {
+          window.console.log(connection);
+          window.connection.sendCustomMessage({
+                                                messageFor: key,
+                                                action: 'play',
+                                                hostId: roomid,
+                                                password: 'password',
+                                                guestInfo: connection.extra,
+                                              });
+        }
+        if (peerlist.get(key).status === 'stop') {
+          window.connection.sendCustomMessage({
+                                                messageFor: key,
+                                                action: 'stop',
+                                                hostId: roomid,
+                                                password: 'password',
+                                                guestInfo: connection.extra,
+                                              });
         }
       }
-    });
-  }
-  window.peerlist = peerlist;
-  socketEmitter.emit('update');
+    }
+  });
 }
 setInterval(() => {
   hb.forEach((item, key) => {
