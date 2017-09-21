@@ -105,6 +105,7 @@ connection.sendCustomMessage = function (message) {
   console.log(message);
   connection.socket.emit(connection.socketCustomEvent, message);
 };
+
 connection.iceServers = [];
 request.get('https://cast.myviewboard.com/api/ice').end((err, res) => {
   connection.iceServers = connection.iceServers.concat(res.body);
