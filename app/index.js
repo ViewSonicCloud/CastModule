@@ -34,8 +34,7 @@ import peerlist from './utils/peerlist';
 window.Observable = Rx.Observable;
 const request = superagent;
 const net = require('net');
-const EventEmitter = require('events');
-const socketEmitter = new EventEmitter();
+const socketEmitter = require('./utils/SocketEmitter');
 const clients = [];
 const argv = {uid: '', environment: 'prod'};
 const hb = new Map();
@@ -45,18 +44,79 @@ const tier = {
   cast_out_queue: -1,
   cast_in_queue: -1
 };
+const process = require('electron').remote.process
+  /*const log_clients=[];
+   const log_tcp = net.createServer((socket) => {
+   socket.name = `${socket.remoteAddress}:${socket.remotePort}`;
+   socket.on('data', (data) => {
+   // socket.write(roomid);
+   console.log(data);
+   if (socket.remoteAddress != '::ffff:127.0.0.1') {
+   return;
+   }
+   });
+   if (socket.remoteAddress != '::ffff:127.0.0.1') {
+   return;
+   }
+   log_clients.push(socket);
+   // Remove the client from the list when it leaves
+   socket.on('end', () => {
+   log_clients.splice(clients.indexOf(socket), 1);
+   });
+   }).listen(25551);*/
+  /*const originalLog = console.log;
+   console.log = function () {
+   for (var _len = arguments.length, arg = Array(_len), _key = 0; _key < _len; _key++) {
+   arg[_key] = arguments[_key];
+   }
+   originalLog(arg);
+   let logMsg = ''
+   arg.forEach(function (item) {
+   logMsg += "LogStart"
+   logMsg += '\n*************************************\n';
+   logMsg += '\n' + new Date() + '\n';
+   logMsg += '\n-----------------------------------------------------\n';
+   logMsg += JSON.stringify(item) + '\n\n';
+   logMsg += '\n*************************************\n';
+   logMsg += "LogEnd"
+   /!*  logfile.write('\n*************************************\n');
+   logfile.write('\n' + new Date() + '\n');
+   logfile.write('\n-----------------------------------------------------\n');
+   logfile.write(JSON.stringify(item) + '\n\n');
+   logfile.write('\n*************************************\n');*!/
+   });
+   log_clients.forEach((client) => {
+   client.write(logMsg);
+   });
+   };*/
+
+  /*process.on('unhandledRejection', function (reason, promise) {
+   console.error('Unhandled rejection', {reason: reason, promise: promise})
+   })*/
+;
+var ipc = require('electron').ipcRenderer;
+window.onerror = function (error, url, line) {
+  ipc.send('errorInWindow', {code: 0, error: error});
+};
 const roomid = 'local';
 console.log(process.argv);
 let processArgs = [];
+argv.uid = '71ba9a6a-9c7a-48b1-adfd-1fee0e04ee0c';
 process.argv.forEach((item) => {
   console.log(item);
-  if (item.indexOf('--js-flags') != -1) {
-    const flags = item.slice(item.indexOf('=') + 1, item.length);
-    processArgs = flags.split('&');
+  if (item.indexOf('--userid=') !== -1) {
+    argv.uid = item.slice(item.indexOf('=') + 1, item.length);
+  } else {
+    ipc.send('errorInWindow', {code: 103, error: 'process userId is not defined'});
+  }
+  if (item.indexOf('--env=') !== -1) {
+    argv.environment = item.slice(item.indexOf('=') + 1, item.length);
+  } else {
+    ipc.send('errorInWindow', {code: 103, error: 'process stage  is not defined'});
   }
 });
 document.querySelector('#output').innerHTML = process.argv;
-let apiUrl = 'https://ssi.myviewboard.com';
+let apiUrl = 'dev://dev.myviewboard.com';
 switch (argv.environment) {
   case 'dev':
     apiUrl = 'https://devapi.myviewboard.com';
@@ -68,12 +128,14 @@ switch (argv.environment) {
     apiUrl = 'https://ssi.myviewboard.com';
     break;
 }
-argv.uid = '71ba9a6a-9c7a-48b1-adfd-1fee0e04ee0c';
 const apiKey = ''; // aes256.encrypt(Date(),argv.uid);
 request.get(`${apiUrl}/api/account/${argv.uid}/role`)
        .set('X-API-Key', apiKey)
        .set('Accept', 'application/json')
        .end((err, res) => {
+         if (err) {
+           return ipc.send('errorInWindow', {code: 503, error: err});
+         }
          connection.extra = {
            id: res.body.id,
            name: res.body.name,
@@ -105,20 +167,23 @@ connection.sendCustomMessage = function (message) {
   console.log(message);
   connection.socket.emit(connection.socketCustomEvent, message);
 };
-
 connection.iceServers = [];
-request.get('https://cast.myviewboard.com/api/ice').end((err, res) => {
-  connection.iceServers = connection.iceServers.concat(res.body);
-});
+/*request.get('https://cast.myviewboard.com/api/ice').end((err, res) => {
+ connection.iceServers = connection.iceServers.concat(res.body);
+ });*/
 request.get('https://wt0q02pbsc.execute-api.us-east-1.amazonaws.com/prod/geticeserv').set('x-api-key', 'EEgA3n9rOW7d9OeyRP8187ZupSsaFpEzDHVBX4b0').end((err, res) => {
+  if (err) {
+    return ipc.send('errorInWindow', {code: 504, error: err});
+  }
   res.body.forEach((item) => {
     if (item.url.indexOf('turn') !== -1) {
-      connection.iceServers = connection.iceServers.concat(item);
     }
+    connection.iceServers = connection.iceServers.concat(item);
   });
 });
-function handleError(e) {
-  console.log(e);
+function handleError(err) {
+  console.log(err);
+  return ipc.send('errorInWindow', {code: 401, error: err});
 }
 desktopCapturer.getSources({types: ['window', 'screen']}, (error, sources) => {
   if (error) throw error;
@@ -152,7 +217,7 @@ function gotStream(stream) {
 }
 function SignalHandShake() {
   connection.checkPresence(roomid, (isOnline, id, info) => {
-    if (!connection.socket) connection.connectSocket();
+    if (!connection.socket) connection.connectSocket()//.onerror((err)=>console.log(err));
     connection.socket.on(connection.socketCustomEvent, (message) => {
       const login = message.guestInfo.name ? 'true' : 'false' || 'false';
       if (message.messageFor === roomid) {
@@ -169,10 +234,9 @@ function SignalHandShake() {
         if (message.action && message.action === 'setList') {
           console.log(new Map(JSON.parse(message.desear)));
           let lastlist = new Map(peerlist);
-          new Map(JSON.parse(message.desear)).forEach((item,key)=>{
+          new Map(JSON.parse(message.desear)).forEach((item, key) => {
             peerlist.set(key, item);
           })
-
           console.log(peerlist);
           peelistHandler(lastlist);
         }
@@ -454,7 +518,6 @@ function socketInHandler(data, socket) {
   socketEmitter.emit('update');
 }
 function peelistHandler(lastlist) {
-
   lastlist.forEach((item, key) => {
     if (peerlist.get(key)) {
       if (item.status === peerlist.get(key).status) {
@@ -534,4 +597,5 @@ setInterval(() => {
     }
   });
 }, 5000);
+
 

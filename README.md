@@ -1,3 +1,9 @@
+exception code:
+503 Network Error SSI Server
+504 Network Error ICE Server List
+401 SCREEN CAPTURE Error
+103 MISSING --userid
+
 # electron-react-boilerplate
 
 ### A Boilerplate for Scalable Cross-Platform Desktop Apps
