@@ -107,12 +107,12 @@ process.argv.forEach((item) => {
   if (item.indexOf('--userid=') !== -1) {
     argv.uid = item.slice(item.indexOf('=') + 1, item.length);
   } else {
-    ipc.send('errorInWindow', {code: 103, error: 'process userId is not defined'});
+    // ipc.send('errorInWindow', {code: 103, error: 'process userId is not defined'});
   }
   if (item.indexOf('--env=') !== -1) {
     argv.environment = item.slice(item.indexOf('=') + 1, item.length);
   } else {
-    ipc.send('errorInWindow', {code: 103, error: 'process stage  is not defined'});
+    //  ipc.send('errorInWindow', {code: 103, error: 'process stage  is not defined'});
   }
 });
 document.querySelector('#output').innerHTML = process.argv;
@@ -187,22 +187,34 @@ function handleError(err) {
 }
 desktopCapturer.getSources({types: ['window', 'screen']}, (error, sources) => {
   if (error) throw error;
+  console.log(connection.DetectRTC.audioOutputDevices.length > 0);
   for (let i = 0; i < sources.length; ++i) {
     if (sources[i].name === 'Entire screen') {
       console.log(sources[i]);
-      navigator.webkitGetUserMedia({
-                                     audio: connection.DetectRTC.audioOutputDevices.length > 0,
-                                     video: {
-                                       mandatory: {
-                                         chromeMediaSource: 'desktop',
-                                         chromeMediaSourceId: sources[i].id,
-                                         minWidth: 1280,
-                                         maxWidth: 1280,
-                                         minHeight: 720,
-                                         maxHeight: 720
-                                       }
-                                     }
-                                   }, gotStream, handleError);
+      const constraint = {
+        // audio:true,
+        //connection.DetectRTC.audioOutputDevices.length > 0,
+        /*    audio: {
+         mandatory: {
+         chromeMediaSource: 'desktop'
+         }
+         },*/
+        audio: connection.DetectRTC.audioOutputDevices.length > 0 ? {
+          mandatory: {
+            chromeMediaSource: 'desktop',
+          }
+        } : false,
+        video: {
+          mandatory: {
+            chromeMediaSource: 'desktop',
+            minWidth: 1280,
+            maxWidth: 1280,
+            minHeight: 720,
+            maxHeight: 720
+          }
+        }
+      }
+      navigator.webkitGetUserMedia(constraint, gotStream, handleError);
       return;
     }
   }
@@ -385,13 +397,13 @@ function tcp_start() {
     socket.on('data', (data) => {
       // socket.write(roomid);
       console.log(data);
-      if (socket.remoteAddress != '::ffff:127.0.0.1') {
-        return;
+      if (socket.remoteAddress !== '::ffff:127.0.0.1') {
+        // return;
       }
       tcpInHandler(data, socket);
     });
-    if (socket.remoteAddress != '::ffff:127.0.0.1') {
-      return;
+    if (socket.remoteAddress !== '::ffff:127.0.0.1') {
+      // return;
     }
     // Put this new client in the list
     clients.push(socket);
@@ -403,6 +415,7 @@ function tcp_start() {
       clients.splice(clients.indexOf(socket), 1);
     });
   }).listen(25552);
+  ipc.send('initWindow', {code: 200, error: null});
 }
 socketEmitter.on('update', function (data) {
   clients.forEach((socket) => {

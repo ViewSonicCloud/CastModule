@@ -15,6 +15,11 @@ import MenuBuilder from './menu';
 const net = require('net');
 var ipc = require('electron').ipcMain;
 const log_clients = [];
+ipc.on('initWindow', function (event, data) {
+  log_clients.forEach((log_client) => {
+    log_client.write(JSON.stringify(data));
+  });
+});
 ipc.on('errorInWindow', function (event, data) {
   console.log(event, data);
   let logMsg = ''
@@ -64,29 +69,32 @@ app.on('window-all-closed', () => {
   }
 });
 app.on('ready', async () => {
-   if (process.env.NODE_ENV === 'development' ) {
-     mainWindow = new BrowserWindow({
-                                      show: true,
-                                      width: 1024,
-                                      height: 728
-                                    });
-   }else{
-     mainWindow = new BrowserWindow({
-                                      show: false,
-                                      width: 1024,
-                                      height: 728
-                                    });
-   }
+  if (process.env.NODE_ENV === 'development') {
+    mainWindow = new BrowserWindow({
+                                     show: true,
+                                     width: 1024,
+                                     height: 728
+                                   });
+  } else {
+    mainWindow = new BrowserWindow({
+                                     show: true,
+                                     width: 1024,
+                                     height: 728
+                                   });
+  }
 
-
+  mainWindow.openDevTools();
 
   const log_tcp = net.createServer((socket) => {
     socket.name = `${socket.remoteAddress}:${socket.remotePort}`;
+    socket.setNoDelay();
     socket.on('data', (data) => {
                 console.log(socket.remoteAddress)
+                console.log(data);
                 console.log(data.toString());
+               // socket.write(JSON.stringify({code: 100, error: {ip: socket.remoteAddress, data: data.toString()}}));
                 if (socket.remoteAddress !== '::ffff:127.0.0.1') {
-                  return;
+                  // return;
                 }
                 console.log(data.toString());
                 if (data && data.toString() === "start") {
@@ -95,7 +103,7 @@ app.on('ready', async () => {
               }
     );
     if (socket.remoteAddress !== '::ffff:127.0.0.1') {
-      return;
+     // return;
     }
     log_clients.push(socket);
     // Remove the client from the list when it leaves
@@ -103,27 +111,30 @@ app.on('ready', async () => {
       log_clients.splice(log_clients.indexOf(socket), 1);
     });
   }).listen(25551);
+
   // @TODO: Use 'ready-to-show' event
   //        https://github.com/electron/electron/blob/master/docs/api/browser-window.md#using-ready-to-show-event
   mainWindow.webContents.on('did-finish-load', () => {
     if (!mainWindow) {
       throw new Error('"mainWindow" is not defined');
     }
-    mainWindow.show();
-    mainWindow.focus();
+
+    //mainWindow.show();
+    //mainWindow.focus();
     windowInit();
   });
   mainWindow.on('closed', () => {
     mainWindow = null;
   });
-  const menuBuilder = new MenuBuilder(mainWindow);
-  menuBuilder.buildMenu();
+  //const menuBuilder = new MenuBuilder(mainWindow);
+  //menuBuilder.buildMenu();
 });
-function windowInit() {
-}
+function windowInit() {};
+
 var exec = require('child_process').exec;
 var cmd = exec('tasklist |find /i "vBoard.exe" ');
 var ipcs = [];
+
 exports = setInterval(function () {
   var isvblive = '';
   cmd = exec('tasklist |find /i "vBoard.exe" ');

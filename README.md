@@ -3,6 +3,10 @@ exception code:
 504 Network Error ICE Server List
 401 SCREEN CAPTURE Error
 103 MISSING --userid
+start code: {code:200}
+error code :{code: 503, error: err}
+
+please run cast.exe --userid=xxxxxxxxxxxxxx --env=dev|stage|prod
 
 # electron-react-boilerplate
 
