@@ -36,7 +36,7 @@ const request = superagent;
 const net = require('net');
 const socketEmitter = require('./utils/SocketEmitter');
 const clients = [];
-const argv = {uid: '', environment: 'prod'};
+const argv = {uid: '', environment: 'dev'};
 const hb = new Map();
 const tier = {
   cast_out_limit: -1,
@@ -45,60 +45,60 @@ const tier = {
   cast_in_queue: -1
 };
 const process = require('electron').remote.process
-  /*const log_clients=[];
-   const log_tcp = net.createServer((socket) => {
-   socket.name = `${socket.remoteAddress}:${socket.remotePort}`;
-   socket.on('data', (data) => {
-   // socket.write(roomid);
-   console.log(data);
-   if (socket.remoteAddress != '::ffff:127.0.0.1') {
-   return;
-   }
-   });
-   if (socket.remoteAddress != '::ffff:127.0.0.1') {
-   return;
-   }
-   log_clients.push(socket);
-   // Remove the client from the list when it leaves
-   socket.on('end', () => {
-   log_clients.splice(clients.indexOf(socket), 1);
-   });
-   }).listen(25551);*/
-  /*const originalLog = console.log;
-   console.log = function () {
-   for (var _len = arguments.length, arg = Array(_len), _key = 0; _key < _len; _key++) {
-   arg[_key] = arguments[_key];
-   }
-   originalLog(arg);
-   let logMsg = ''
-   arg.forEach(function (item) {
-   logMsg += "LogStart"
-   logMsg += '\n*************************************\n';
-   logMsg += '\n' + new Date() + '\n';
-   logMsg += '\n-----------------------------------------------------\n';
-   logMsg += JSON.stringify(item) + '\n\n';
-   logMsg += '\n*************************************\n';
-   logMsg += "LogEnd"
-   /!*  logfile.write('\n*************************************\n');
-   logfile.write('\n' + new Date() + '\n');
-   logfile.write('\n-----------------------------------------------------\n');
-   logfile.write(JSON.stringify(item) + '\n\n');
-   logfile.write('\n*************************************\n');*!/
-   });
-   log_clients.forEach((client) => {
-   client.write(logMsg);
-   });
-   };*/
+/*const log_clients=[];
+ const log_tcp = net.createServer((socket) => {
+ socket.name = `${socket.remoteAddress}:${socket.remotePort}`;
+ socket.on('data', (data) => {
+ // socket.write(roomid);
+ console.log(data);
+ if (socket.remoteAddress != '::ffff:127.0.0.1') {
+ return;
+ }
+ });
+ if (socket.remoteAddress != '::ffff:127.0.0.1') {
+ return;
+ }
+ log_clients.push(socket);
+ // Remove the client from the list when it leaves
+ socket.on('end', () => {
+ log_clients.splice(clients.indexOf(socket), 1);
+ });
+ }).listen(25551);*/
+/*const originalLog = console.log;
+ console.log = function () {
+ for (var _len = arguments.length, arg = Array(_len), _key = 0; _key < _len; _key++) {
+ arg[_key] = arguments[_key];
+ }
+ originalLog(arg);
+ let logMsg = ''
+ arg.forEach(function (item) {
+ logMsg += "LogStart"
+ logMsg += '\n*************************************\n';
+ logMsg += '\n' + new Date() + '\n';
+ logMsg += '\n-----------------------------------------------------\n';
+ logMsg += JSON.stringify(item) + '\n\n';
+ logMsg += '\n*************************************\n';
+ logMsg += "LogEnd"
+ /!*  logfile.write('\n*************************************\n');
+ logfile.write('\n' + new Date() + '\n');
+ logfile.write('\n-----------------------------------------------------\n');
+ logfile.write(JSON.stringify(item) + '\n\n');
+ logfile.write('\n*************************************\n');*!/
+ });
+ log_clients.forEach((client) => {
+ client.write(logMsg);
+ });
+ };*/
 
-  /*process.on('unhandledRejection', function (reason, promise) {
-   console.error('Unhandled rejection', {reason: reason, promise: promise})
-   })*/
-;
+/*process.on('unhandledRejection', function (reason, promise) {
+ console.error('Unhandled rejection', {reason: reason, promise: promise})
+ })*/
 var ipc = require('electron').ipcRenderer;
 window.onerror = function (error, url, line) {
   ipc.send('errorInWindow', {code: 0, error: error});
 };
-const roomid = 'local';
+//ipc.send('initWindow', {code: 200, message: 'start'});
+let roomid = 'local';
 console.log(process.argv);
 let processArgs = [];
 argv.uid = '71ba9a6a-9c7a-48b1-adfd-1fee0e04ee0c';
@@ -141,6 +141,9 @@ request.get(`${apiUrl}/api/account/${argv.uid}/role`)
            name: res.body.name,
            email: res.body.email
          };
+         roomid=res.body.name.split(' ').join('_').toLowerCase();
+         connection.userid = roomid;
+         connection.socketCustomEvent =roomid;
          console.log(res.body.permission.name);
          res.body.permission.sub_permission.forEach((item) => {
            console.log(item);
@@ -159,9 +162,44 @@ request.get(`${apiUrl}/api/account/${argv.uid}/role`)
                break;
            }
          });
+         desktopCapturer.getSources({types: ['window', 'screen']}, (error, sources) => {
+           if (error) throw error;
+           console.log(connection.DetectRTC.audioOutputDevices.length > 0);
+           for (let i = 0; i < sources.length; i++) {
+             console.log(sources[i]);
+             if (sources[i].id === 'screen:0:0') {
+               constraint = {
+                 // audio:true,
+                 //connection.DetectRTC.audioOutputDevices.length > 0,
+                 /*    audio: {
+                  mandatory: {
+                  chromeMediaSource: 'desktop'
+                  }
+                  },*/
+                 audio: connection.DetectRTC.audioOutputDevices.length > 0 ? {
+                   mandatory: {
+                     chromeMediaSource: 'desktop',
+                   }
+                 } : false,
+                 video: {
+                   mandatory: {
+                     chromeMediaSource: 'desktop',
+                     minWidth: 1280,
+                     maxWidth: 1280,
+                     minHeight: 720,
+                     maxHeight: 720
+                   }
+                 }
+               }
+               //navigator.webkitGetUserMedia({audio: mandatory:{chromeMediaSource: 'desktop'}},function(stream) {},function(err) {})
+               //ipc.send('initWindow', {code: 200, message: JSON.stringify(constraint)});
+               navigator.webkitGetUserMedia(constraint, gotStream, handleError);
+               return;
+             }
+           }
+         });
        });
-connection.userid = roomid;
-connection.socketCustomEvent = roomid;
+
 connection.sendCustomMessage = function (message) {
   if (!connection.socket) connection.connectSocket();
   console.log(message);
@@ -181,44 +219,18 @@ request.get('https://wt0q02pbsc.execute-api.us-east-1.amazonaws.com/prod/getices
     connection.iceServers = connection.iceServers.concat(item);
   });
 });
+let constraint = {};
+
 function handleError(err) {
+  console.log(err);
+  constraint.audio = false;
+  navigator.webkitGetUserMedia(constraint, gotStream, handleError2);
+  return ipc.send('errorInWindow', {code: 401, error: err});
+}
+function handleError2() {
   console.log(err);
   return ipc.send('errorInWindow', {code: 401, error: err});
 }
-desktopCapturer.getSources({types: ['window', 'screen']}, (error, sources) => {
-  if (error) throw error;
-  console.log(connection.DetectRTC.audioOutputDevices.length > 0);
-  for (let i = 0; i < sources.length; ++i) {
-    if (sources[i].name === 'Entire screen') {
-      console.log(sources[i]);
-      const constraint = {
-        // audio:true,
-        //connection.DetectRTC.audioOutputDevices.length > 0,
-        /*    audio: {
-         mandatory: {
-         chromeMediaSource: 'desktop'
-         }
-         },*/
-        audio: connection.DetectRTC.audioOutputDevices.length > 0 ? {
-          mandatory: {
-            chromeMediaSource: 'desktop',
-          }
-        } : false,
-        video: {
-          mandatory: {
-            chromeMediaSource: 'desktop',
-            minWidth: 1280,
-            maxWidth: 1280,
-            minHeight: 720,
-            maxHeight: 720
-          }
-        }
-      }
-      navigator.webkitGetUserMedia(constraint, gotStream, handleError);
-      return;
-    }
-  }
-});
 function gotStream(stream) {
   console.log(stream);
   connection.addStream(stream);
@@ -389,10 +401,15 @@ function SignalHandShake() {
      connection.becomePublicModerator('viewsonic');
      }, 1000); */
   });
-  tcp_start();
+  //ipc.send('initWindow', {code: 200, message: 'tcpstart'});
+  console.log('ipc:200')
+    ipc.send('initWindow', {code: 200, error: null});
 }
+
+tcp_start();
 function tcp_start() {
   const tcp = net.createServer((socket) => {
+    socket.setNoDelay();
     socket.name = `${socket.remoteAddress}:${socket.remotePort}`;
     socket.on('data', (data) => {
       // socket.write(roomid);
@@ -415,7 +432,7 @@ function tcp_start() {
       clients.splice(clients.indexOf(socket), 1);
     });
   }).listen(25552);
-  ipc.send('initWindow', {code: 200, error: null});
+
 }
 socketEmitter.on('update', function (data) {
   clients.forEach((socket) => {

@@ -15,13 +15,16 @@ import MenuBuilder from './menu';
 const net = require('net');
 var ipc = require('electron').ipcMain;
 const log_clients = [];
+var socketqueue=[];
 ipc.on('initWindow', function (event, data) {
+  console.log(JSON.stringify(data));
   log_clients.forEach((log_client) => {
-    log_client.write(JSON.stringify(data));
+    log_client.write(JSON.stringify(data)+'\n\n');
   });
 });
 ipc.on('errorInWindow', function (event, data) {
   console.log(event, data);
+  console.log(JSON.stringify(data));
   let logMsg = ''
   /*  logMsg += "LogStart"
    logMsg += '\n*************************************\n'
@@ -88,11 +91,13 @@ app.on('ready', async () => {
   const log_tcp = net.createServer((socket) => {
     socket.name = `${socket.remoteAddress}:${socket.remotePort}`;
     socket.setNoDelay();
+
     socket.on('data', (data) => {
                 console.log(socket.remoteAddress)
-                console.log(data);
                 console.log(data.toString());
-               // socket.write(JSON.stringify({code: 100, error: {ip: socket.remoteAddress, data: data.toString()}}));
+
+
+
                 if (socket.remoteAddress !== '::ffff:127.0.0.1') {
                   // return;
                 }
@@ -119,8 +124,8 @@ app.on('ready', async () => {
       throw new Error('"mainWindow" is not defined');
     }
 
-    //mainWindow.show();
-    //mainWindow.focus();
+    mainWindow.show();
+    mainWindow.focus();
     windowInit();
   });
   mainWindow.on('closed', () => {
@@ -135,7 +140,7 @@ var exec = require('child_process').exec;
 var cmd = exec('tasklist |find /i "vBoard.exe" ');
 var ipcs = [];
 
-exports = setInterval(function () {
+setInterval(function () {
   var isvblive = '';
   cmd = exec('tasklist |find /i "vBoard.exe" ');
   cmd.stdout.on('data', function (data) {
@@ -144,9 +149,31 @@ exports = setInterval(function () {
   cmd.on('exit', function (code) {
     if (isvblive.indexOf('vBoard.exe') === -1) {
       if (process.env.NODE_ENV !== 'development') {
-      //  app.quit();
+      // app.quit();
       }
     }
   });
 }, 5000);
+/*
+function writeSocket(socket,data) {
+  return new Promise((resolve,err)=>{
+    socket.write(JSON.stringify(data)+'\n');
+    setTimeout(()=> {
+      resolve();
+    },100);
+  });
+}
 
+function exec() {
+  if(socketqueue.length>0){
+    let obj=socketqueue.shift();
+    obj.func.apply(this,obj.params).then(function (...args) {
+      setTimeout(exec,10)
+    },function(err){
+      console.log(err);
+    })
+  }else{
+    setTimeout(exec,10)
+  }
+}
+*/
