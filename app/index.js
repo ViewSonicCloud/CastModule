@@ -141,9 +141,9 @@ request.get(`${apiUrl}/api/account/${argv.uid}/role`)
            name: res.body.name,
            email: res.body.email
          };
-         roomid=res.body.name.split(' ').join('_').toLowerCase();
+         roomid = res.body.name.split(' ').join('_').toLowerCase();
          connection.userid = roomid;
-         connection.socketCustomEvent =roomid;
+         connection.socketCustomEvent = roomid;
          console.log(res.body.permission.name);
          res.body.permission.sub_permission.forEach((item) => {
            console.log(item);
@@ -199,7 +199,6 @@ request.get(`${apiUrl}/api/account/${argv.uid}/role`)
            }
          });
        });
-
 connection.sendCustomMessage = function (message) {
   if (!connection.socket) connection.connectSocket();
   console.log(message);
@@ -220,7 +219,6 @@ request.get('https://wt0q02pbsc.execute-api.us-east-1.amazonaws.com/prod/getices
   });
 });
 let constraint = {};
-
 function handleError(err) {
   console.log(err);
   constraint.audio = false;
@@ -244,6 +242,7 @@ function SignalHandShake() {
     if (!connection.socket) connection.connectSocket()//.onerror((err)=>console.log(err));
     connection.socket.on(connection.socketCustomEvent, (message) => {
       const login = message.guestInfo.name ? 'true' : 'false' || 'false';
+      console.log(message.guestInfo, login);
       if (message.messageFor === roomid) {
         hb.set(message.guestId, 5);
         if (message.action === 'dropped') {
@@ -316,7 +315,7 @@ function SignalHandShake() {
             peerlist.set(message.guestId, {
               status: message.action,
               approved: 'false',
-              login,
+              login: login,
               direction: 'in',
               url: message.url,
               info: message.guestInfo
@@ -365,7 +364,7 @@ function SignalHandShake() {
           peerlist.set(message.guestId, {
             status: 'join',
             approved: 'false',
-            login,
+            login: login,
             direction: 'out',
             info: message.guestInfo
           });
@@ -403,9 +402,8 @@ function SignalHandShake() {
   });
   //ipc.send('initWindow', {code: 200, message: 'tcpstart'});
   console.log('ipc:200')
-    ipc.send('initWindow', {code: 200, error: null});
+  ipc.send('initWindow', {code: 200, error: null});
 }
-
 tcp_start();
 function tcp_start() {
   const tcp = net.createServer((socket) => {
@@ -432,7 +430,6 @@ function tcp_start() {
       clients.splice(clients.indexOf(socket), 1);
     });
   }).listen(25552);
-
 }
 socketEmitter.on('update', function (data) {
   clients.forEach((socket) => {
@@ -528,6 +525,8 @@ function socketInHandler(data, socket) {
       //  peerlist.set(item, {status: 'play', approved: 'true'})
       peerlist.get(item).status = 'play;';
       peerlist.get(item).approved = 'true';
+      console.log(socketEmitter);
+      socketEmitter.emit('update');
     });
     // socket.write(JSON.stringify([...peerlist]));
     writeSocket(socket);
@@ -538,14 +537,12 @@ function socketInHandler(data, socket) {
     if (dataobj.selectAudioSource) {
       return;
     }
-    window.console.log(typeof dataobj, dataobj);
     dataobj.forEach((item, key) => {
       console.log(item);
       peerlist.set(item[0], item[1]);
     });
     peelistHandler(lastlist);
   }
-  socketEmitter.emit('update');
 }
 function peelistHandler(lastlist) {
   lastlist.forEach((item, key) => {
@@ -573,6 +570,8 @@ function peelistHandler(lastlist) {
                                                 guestInfo: connection.extra,
                                               });
         }
+        console.log(socketEmitter);
+        socketEmitter.emit('update');
       }
     }
   });

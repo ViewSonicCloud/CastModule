@@ -74,13 +74,13 @@ app.on('window-all-closed', () => {
 app.on('ready', async () => {
   if (process.env.NODE_ENV === 'development') {
     mainWindow = new BrowserWindow({
-                                     show: true,
+                                     show: false,
                                      width: 1024,
                                      height: 728
                                    });
   } else {
     mainWindow = new BrowserWindow({
-                                     show: true,
+                                     show: false,
                                      width: 1024,
                                      height: 728
                                    });
@@ -124,8 +124,8 @@ app.on('ready', async () => {
       throw new Error('"mainWindow" is not defined');
     }
 
-    mainWindow.show();
-    mainWindow.focus();
+    //mainWindow.show();
+    //mainWindow.focus();
     windowInit();
   });
   mainWindow.on('closed', () => {
@@ -149,7 +149,7 @@ setInterval(function () {
   cmd.on('exit', function (code) {
     if (isvblive.indexOf('vBoard.exe') === -1) {
       if (process.env.NODE_ENV !== 'development') {
-      // app.quit();
+     // app.quit();
       }
     }
   });
