@@ -253,6 +253,11 @@ function SignalHandShake() {
         if (message.action && message.action === 'getList') {
           console.log(message)
           socketEmitter.emit('update');
+
+
+
+
+          
         }
         if (message.action && message.action === 'setList') {
           console.log(new Map(JSON.parse(message.desear)));
