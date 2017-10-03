@@ -201,7 +201,7 @@ request.get(`${apiUrl}/api/account/${argv.uid}/role`)
        });
 connection.sendCustomMessage = function (message) {
   if (!connection.socket) connection.connectSocket();
-  console.log(message);
+  console.log(message, connection.socketCustomEvent);
   connection.socket.emit(connection.socketCustomEvent, message);
 };
 connection.iceServers = [];
@@ -242,7 +242,10 @@ function SignalHandShake() {
     if (!connection.socket) connection.connectSocket()//.onerror((err)=>console.log(err));
     connection.socket.on(connection.socketCustomEvent, (message) => {
       const login = message.guestInfo.name ? 'true' : 'false' || 'false';
-      console.log(message.guestInfo, login);
+      if (login === 'false') {
+        console.log(message)
+      }
+      //   console.log(message.guestInfo, login);
       if (message.messageFor === roomid) {
         hb.set(message.guestId, 5);
         if (message.action === 'dropped') {
@@ -253,11 +256,6 @@ function SignalHandShake() {
         if (message.action && message.action === 'getList') {
           console.log(message)
           socketEmitter.emit('update');
-
-
-
-
-          
         }
         if (message.action && message.action === 'setList') {
           console.log(new Map(JSON.parse(message.desear)));

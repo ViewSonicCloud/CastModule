@@ -95,9 +95,6 @@ app.on('ready', async () => {
     socket.on('data', (data) => {
                 console.log(socket.remoteAddress)
                 console.log(data.toString());
-
-
-
                 if (socket.remoteAddress !== '::ffff:127.0.0.1') {
                   // return;
                 }
