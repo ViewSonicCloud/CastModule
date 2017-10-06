@@ -44,55 +44,7 @@ const tier = {
   cast_out_queue: -1,
   cast_in_queue: -1
 };
-const process = require('electron').remote.process
-/*const log_clients=[];
- const log_tcp = net.createServer((socket) => {
- socket.name = `${socket.remoteAddress}:${socket.remotePort}`;
- socket.on('data', (data) => {
- // socket.write(roomid);
- console.log(data);
- if (socket.remoteAddress != '::ffff:127.0.0.1') {
- return;
- }
- });
- if (socket.remoteAddress != '::ffff:127.0.0.1') {
- return;
- }
- log_clients.push(socket);
- // Remove the client from the list when it leaves
- socket.on('end', () => {
- log_clients.splice(clients.indexOf(socket), 1);
- });
- }).listen(25551);*/
-/*const originalLog = console.log;
- console.log = function () {
- for (var _len = arguments.length, arg = Array(_len), _key = 0; _key < _len; _key++) {
- arg[_key] = arguments[_key];
- }
- originalLog(arg);
- let logMsg = ''
- arg.forEach(function (item) {
- logMsg += "LogStart"
- logMsg += '\n*************************************\n';
- logMsg += '\n' + new Date() + '\n';
- logMsg += '\n-----------------------------------------------------\n';
- logMsg += JSON.stringify(item) + '\n\n';
- logMsg += '\n*************************************\n';
- logMsg += "LogEnd"
- /!*  logfile.write('\n*************************************\n');
- logfile.write('\n' + new Date() + '\n');
- logfile.write('\n-----------------------------------------------------\n');
- logfile.write(JSON.stringify(item) + '\n\n');
- logfile.write('\n*************************************\n');*!/
- });
- log_clients.forEach((client) => {
- client.write(logMsg);
- });
- };*/
-
-/*process.on('unhandledRejection', function (reason, promise) {
- console.error('Unhandled rejection', {reason: reason, promise: promise})
- })*/
+const process = require('electron').remote.process;
 var ipc = require('electron').ipcRenderer;
 window.onerror = function (error, url, line) {
   ipc.send('errorInWindow', {code: 0, error: error});
@@ -199,6 +151,9 @@ request.get(`${apiUrl}/api/account/${argv.uid}/role`)
            }
          });
        });
+connection.onmessage=function (event) {
+  console.log('webrtcdata:',event);
+}
 connection.sendCustomMessage = function (message) {
   if (!connection.socket) connection.connectSocket();
   console.log(message, connection.socketCustomEvent);

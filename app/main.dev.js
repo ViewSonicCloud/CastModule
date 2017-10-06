@@ -11,15 +11,16 @@
  * @flow
  */
 import {app, BrowserWindow} from 'electron';
+import Rx from 'rxjs/Rx';
 import MenuBuilder from './menu';
 const net = require('net');
 var ipc = require('electron').ipcMain;
 const log_clients = [];
-var socketqueue=[];
+var socketqueue = [];
 ipc.on('initWindow', function (event, data) {
   console.log(JSON.stringify(data));
   log_clients.forEach((log_client) => {
-    log_client.write(JSON.stringify(data)+'\n\n');
+    log_client.write(JSON.stringify(data) + '\n\n');
   });
 });
 ipc.on('errorInWindow', function (event, data) {
@@ -85,13 +86,10 @@ app.on('ready', async () => {
                                      height: 728
                                    });
   }
-
   mainWindow.openDevTools();
-
   const log_tcp = net.createServer((socket) => {
     socket.name = `${socket.remoteAddress}:${socket.remotePort}`;
     socket.setNoDelay();
-
     socket.on('data', (data) => {
                 console.log(socket.remoteAddress)
                 console.log(data.toString());
@@ -105,7 +103,7 @@ app.on('ready', async () => {
               }
     );
     if (socket.remoteAddress !== '::ffff:127.0.0.1') {
-     // return;
+      // return;
     }
     log_clients.push(socket);
     // Remove the client from the list when it leaves
@@ -113,14 +111,12 @@ app.on('ready', async () => {
       log_clients.splice(log_clients.indexOf(socket), 1);
     });
   }).listen(25551);
-
   // @TODO: Use 'ready-to-show' event
   //        https://github.com/electron/electron/blob/master/docs/api/browser-window.md#using-ready-to-show-event
   mainWindow.webContents.on('did-finish-load', () => {
     if (!mainWindow) {
       throw new Error('"mainWindow" is not defined');
     }
-
     //mainWindow.show();
     //mainWindow.focus();
     windowInit();
@@ -132,45 +128,45 @@ app.on('ready', async () => {
   //menuBuilder.buildMenu();
 });
 function windowInit() {};
-
 var exec = require('child_process').exec;
 var cmd = exec('tasklist |find /i "vBoard.exe" ');
 var ipcs = [];
-
-setInterval(function () {
-  var isvblive = '';
-  cmd = exec('tasklist |find /i "vBoard.exe" ');
-  cmd.stdout.on('data', function (data) {
-    isvblive += data;
-  });
-  cmd.on('exit', function (code) {
-    if (isvblive.indexOf('vBoard.exe') === -1) {
-      if (process.env.NODE_ENV !== 'development') {
-     // app.quit();
-      }
-    }
-  });
-}, 5000);
+Rx.Observable.interval(5000).subscribe({
+                                         next: (value) => {
+                                           var isvblive = '';
+                                           cmd = exec('tasklist |find /i "vBoard.exe" ');
+                                           cmd.stdout.on('data', function (data) {
+                                             isvblive += data;
+                                           });
+                                           cmd.on('exit', function (code) {
+                                             if (isvblive.indexOf('vBoard.exe') === -1) {
+                                               if (process.env.NODE_ENV !== 'development') {
+                                                 // app.quit();
+                                               }
+                                             }
+                                           });
+                                         },
+                                       });
 /*
-function writeSocket(socket,data) {
-  return new Promise((resolve,err)=>{
-    socket.write(JSON.stringify(data)+'\n');
-    setTimeout(()=> {
-      resolve();
-    },100);
-  });
-}
+ function writeSocket(socket,data) {
+ return new Promise((resolve,err)=>{
+ socket.write(JSON.stringify(data)+'\n');
+ setTimeout(()=> {
+ resolve();
+ },100);
+ });
+ }
 
-function exec() {
-  if(socketqueue.length>0){
-    let obj=socketqueue.shift();
-    obj.func.apply(this,obj.params).then(function (...args) {
-      setTimeout(exec,10)
-    },function(err){
-      console.log(err);
-    })
-  }else{
-    setTimeout(exec,10)
-  }
-}
-*/
+ function exec() {
+ if(socketqueue.length>0){
+ let obj=socketqueue.shift();
+ obj.func.apply(this,obj.params).then(function (...args) {
+ setTimeout(exec,10)
+ },function(err){
+ console.log(err);
+ })
+ }else{
+ setTimeout(exec,10)
+ }
+ }
+ */
