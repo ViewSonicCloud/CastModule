@@ -8,6 +8,18 @@ error code :{code: 503, error: err}
 
 please run cast.exe --userid=xxxxxxxxxxxxxx --env=dev|stage|prod
 
+//android//
+/*
+
+ socket.emit(ViewBoard Name,{
+                             messageFor:ViewBoard Name,
+                             action: 'start',
+                             guestId: my name,
+                             password: 'password',
+                             direction: 'in',
+                             guestInfo: {type:'android'}
+                             });
+
 # electron-react-boilerplate
 
 ### A Boilerplate for Scalable Cross-Platform Desktop Apps

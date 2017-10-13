@@ -151,8 +151,8 @@ request.get(`${apiUrl}/api/account/${argv.uid}/role`)
            }
          });
        });
-connection.onmessage=function (event) {
-  console.log('webrtcdata:',event);
+connection.onmessage = function (event) {
+  console.log('webrtcdata:', event);
 }
 connection.sendCustomMessage = function (message) {
   if (!connection.socket) connection.connectSocket();
@@ -191,14 +191,37 @@ function gotStream(stream) {
     {host: roomid, endpoints: [], server: 'https://cast-sig.myviewboard.com/'}).end(
     (err, res) => { SignalHandShake(); }
   );
+
+  const constraints = {
+    audio: true, // mandatory.
+  };
+  const errorCallback = function(err){
+    console.log(err);
+  };
+
+  const successCallback = function(stream){
+    console.log(stream.getAudioTracks());
+    stream.getAudioTracks().forEach(function (item) {
+      connection.attachStreams[0].addTrack(item);
+      console.log('audio added',item);
+    });
+
+
+  };
+
+  navigator.getUserMedia(constraints, successCallback, errorCallback);
+
 }
 function SignalHandShake() {
   connection.checkPresence(roomid, (isOnline, id, info) => {
+    if (isOnline) {
+      //throw {error: {isOnline: isOnline}};
+    }
     if (!connection.socket) connection.connectSocket()//.onerror((err)=>console.log(err));
     connection.socket.on(connection.socketCustomEvent, (message) => {
       const login = message.guestInfo.name ? 'true' : 'false' || 'false';
       if (login === 'false') {
-        console.log(message)
+        //console.log(message)
       }
       //   console.log(message.guestInfo, login);
       if (message.messageFor === roomid) {
@@ -541,6 +564,7 @@ setInterval(() => {
   });
   peerlist.forEach((item, key) => {
     if (hb.get(key) === 0) {
+      //check if connection still going
       connection.getAllParticipants().forEach((item) => {
         if (key === item) {
           return false;
@@ -549,7 +573,11 @@ setInterval(() => {
       peerlist.delete(key);
       hb.delete(key);
       console.log(key, 'is kicked');
-      //   window.peerlist=peerlist
+      connection.sendCustomMessage({
+                                     messageFor: key,
+                                     action: 'kicked',
+                                     hostId: roomid
+                                   });
       socketEmitter.emit('update');
     }
   });
