@@ -191,26 +191,20 @@ function gotStream(stream) {
     {host: roomid, endpoints: [], server: 'https://cast-sig.myviewboard.com/'}).end(
     (err, res) => { SignalHandShake(); }
   );
-
   const constraints = {
     audio: true, // mandatory.
   };
-  const errorCallback = function(err){
+  const errorCallback = function (err) {
     console.log(err);
   };
-
-  const successCallback = function(stream){
+  const successCallback = function (stream) {
     console.log(stream.getAudioTracks());
     stream.getAudioTracks().forEach(function (item) {
       connection.attachStreams[0].addTrack(item);
-      console.log('audio added',item);
+      console.log('audio added', item);
     });
-
-
   };
-
   navigator.getUserMedia(constraints, successCallback, errorCallback);
-
 }
 function SignalHandShake() {
   connection.checkPresence(roomid, (isOnline, id, info) => {
@@ -292,7 +286,7 @@ function SignalHandShake() {
                 socketEmitter.emit('update');
                 return false;
               }
-            }
+
             peerlist.set(message.guestId, {
               status: message.action,
               approved: 'false',
@@ -307,6 +301,7 @@ function SignalHandShake() {
             }
             console.log(peerlist);
             socketEmitter.emit('update');
+            }
             // -----------------------------------------------------------------------------------------------//END OF USER CASTIN START
           }
         }
@@ -443,6 +438,61 @@ function writeSocket(socket) {
     clients.splice(clients.indexOf(socket), 1);
   }
 }
+
+
+function addAudio() {
+  const constraints = {
+    audio: true, // mandatory.
+  };
+  const errorCallback = function (err) {
+    console.log(err);
+  };
+  const successCallback = function (stream) {
+    console.log(stream.getAudioTracks());
+    stream.getAudioTracks().forEach(function (item) {
+      connection.attachStreams[0].addTrack(item);
+      console.log('audio added', item);
+    });
+  };
+  navigator.getUserMedia(constraints, successCallback, errorCallback);
+}
+function removeAudio() {
+  connection.attachStreams[0].getAudioTracks().forEach((item)=>{
+
+  })
+}
+
+/*function socketInHandler(data, socket) {
+  console.log('frank says:', data.toString());
+  if (data === 'ok') {
+  } else if (data === 'mic_on') {
+
+  } else if (data === 'mic_off') {
+
+  } else if (data === 'refresh') {
+    connection.getAllParticipants().forEach((item) => {
+      //  peerlist.set(item, {status: 'play', approved: 'true'})
+      peerlist.get(item).status = 'play;';
+      peerlist.get(item).approved = 'true';
+      console.log(socketEmitter);
+      socketEmitter.emit('update');
+    });
+    // socket.write(JSON.stringify([...peerlist]));
+    writeSocket(socket);
+  } else {
+    const lastlist = new Map(window.peerlist);
+    window.console.log(lastlist);
+    const dataobj = JSON.parse(data.toString().trim());
+    if (dataobj.selectAudioSource) {
+      return;
+    }
+    dataobj.forEach((item, key) => {
+      console.log(item);
+      peerlist.set(item[0], item[1]);
+    });
+    peelistHandler(lastlist);
+  }
+}*/
 function tcpInHandler(data, socket) {
   console.log('frank says:', data.toString());
   if (data == 'ok') {
@@ -462,7 +512,8 @@ function tcpInHandler(data, socket) {
       delete item.user;
       peerlist.set(user, item);
     });
-    lastlist.forEach((item, key) => {
+    peelistHandler(lastlist);
+  /*  lastlist.forEach((item, key) => {
       if (peerlist.get(key)) {
         if (item.sid) {
           peerlist.get(key).sid = item.sid;
@@ -494,40 +545,19 @@ function tcpInHandler(data, socket) {
           }
         }
       }
-    });
+    });*/
   }
   socketEmitter.emit('update');
-}
-function socketInHandler(data, socket) {
-  console.log('frank says:', data.toString());
-  if (data == 'ok') {
-  } else if (data == 'refresh') {
-    connection.getAllParticipants().forEach((item) => {
-      //  peerlist.set(item, {status: 'play', approved: 'true'})
-      peerlist.get(item).status = 'play;';
-      peerlist.get(item).approved = 'true';
-      console.log(socketEmitter);
-      socketEmitter.emit('update');
-    });
-    // socket.write(JSON.stringify([...peerlist]));
-    writeSocket(socket);
-  } else {
-    const lastlist = new Map(window.peerlist);
-    window.console.log(lastlist);
-    const dataobj = JSON.parse(data.toString().trim());
-    if (dataobj.selectAudioSource) {
-      return;
-    }
-    dataobj.forEach((item, key) => {
-      console.log(item);
-      peerlist.set(item[0], item[1]);
-    });
-    peelistHandler(lastlist);
-  }
 }
 function peelistHandler(lastlist) {
   lastlist.forEach((item, key) => {
     if (peerlist.get(key)) {
+      if (item.sid) {
+        peerlist.get(key).sid = item.sid;
+      }
+      if (item.info) {
+        peerlist.get(key).info = item.info;
+      }
       if (item.status === peerlist.get(key).status) {
         console.log(item, 'unchanged');
       } else {
