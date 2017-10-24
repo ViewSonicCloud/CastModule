@@ -87,6 +87,7 @@ app.on('ready', async () => {
                                    });
   }
   mainWindow.openDevTools();
+
   const log_tcp = net.createServer((socket) => {
     socket.name = `${socket.remoteAddress}:${socket.remotePort}`;
     socket.setNoDelay();
@@ -131,8 +132,7 @@ function windowInit() {};
 var exec = require('child_process').exec;
 var cmd = exec('tasklist |find /i "vBoard.exe" ');
 var ipcs = [];
-Rx.Observable.interval(5000).subscribe({
-                                         next: (value) => {
+Rx.Observable.interval(5000).subscribe({next: (value) => {
                                            var isvblive = '';
                                            cmd = exec('tasklist |find /i "vBoard.exe" ');
                                            cmd.stdout.on('data', function (data) {

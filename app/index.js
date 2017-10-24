@@ -212,7 +212,15 @@ function SignalHandShake() {
       //throw {error: {isOnline: isOnline}};
     }
     if (!connection.socket) connection.connectSocket()//.onerror((err)=>console.log(err));
+  /*  connection.socket.on('disconnect', function() {
+      if (connection.enableLogs) {
+        console.warn('socket.io connection is closed');
+      }
+      connection.connectSocket();
+    });*/
     connection.socket.on(connection.socketCustomEvent, (message) => {
+
+      // console.log(message);
       const login = message.guestInfo.name ? 'true' : 'false' || 'false';
       if (login === 'false') {
         //console.log(message)
@@ -269,8 +277,10 @@ function SignalHandShake() {
               return false;
             }
           } else {
+
             // -----------------------------------------------------------------------------------------------//USER CASTIN START
             if (message.action === 'start') {
+              console.log(message)
               const n_in = [...peerlist].filter((arr) => arr[1].direction === 'in').length;
               console.log(n_in);
               if (n_in === tier.cast_in_queue) {
@@ -286,21 +296,30 @@ function SignalHandShake() {
                 socketEmitter.emit('update');
                 return false;
               }
-
-            peerlist.set(message.guestId, {
-              status: message.action,
-              approved: 'false',
-              login: login,
-              direction: 'in',
-              url: message.url,
-              info: message.guestInfo
-            });
-            peerlist.get(message.guestId).createTime = Date.now();
-            if (message.guestInfo.sid) {
-              peerlist.get(message.guestId).sid = message.guestInfo.sid;
-            }
-            console.log(peerlist);
-            socketEmitter.emit('update');
+              if (!peerlist.get(message.guestId)) {
+                peerlist.set(message.guestId, {
+                  status: message.action,
+                  approved: 'false',
+                  login: login,
+                  direction: 'in',
+                  url: message.url,
+                  info: message.guestInfo
+                });
+                peerlist.get(message.guestId).createTime = Date.now();
+                if (message.guestInfo.sid) {
+                  peerlist.get(message.guestId).sid = message.guestInfo.sid;
+                }
+                console.log(peerlist);
+                connection.sendCustomMessage({
+                                               messageFor: message.guestId,
+                                               action: 'startok',
+                                               hostId: roomid,
+                                             });
+                 if (!connection.socket) connection.connectSocket();
+                connection.socket.emit(message.guestId, 'startok');
+                console.log('startok');
+                socketEmitter.emit('update');
+              }
             }
             // -----------------------------------------------------------------------------------------------//END OF USER CASTIN START
           }
@@ -357,6 +376,22 @@ function SignalHandShake() {
           if (peerlist.get(message.guestId)) {
             hb.set(message.guestId, 5);
           }
+        }
+        if (message.action && message.action === 'mute') {
+          //  console.log(message);
+          if (peerlist.get(message.guestId)) {
+            peerlist.get(message.guestId).info.pauesd = true;
+            hb.set(message.guestId, 5);
+          }
+          socketEmitter.emit('update');
+        }
+        if (message.action && message.action === 'unmute') {
+          //  console.log(message);
+          if (peerlist.get(message.guestId)) {
+            peerlist.get(message.guestId).info.paused = false;
+            hb.set(message.guestId, 5);
+          }
+          socketEmitter.emit('update');
         }
         if (message.action && message.action === 'stopped') {
           console.log(message);
@@ -438,8 +473,6 @@ function writeSocket(socket) {
     clients.splice(clients.indexOf(socket), 1);
   }
 }
-
-
 function addAudio() {
   const constraints = {
     audio: true, // mandatory.
@@ -457,42 +490,40 @@ function addAudio() {
   navigator.getUserMedia(constraints, successCallback, errorCallback);
 }
 function removeAudio() {
-  connection.attachStreams[0].getAudioTracks().forEach((item)=>{
-
+  connection.attachStreams[0].getAudioTracks().forEach((item) => {
   })
 }
-
 /*function socketInHandler(data, socket) {
-  console.log('frank says:', data.toString());
-  if (data === 'ok') {
-  } else if (data === 'mic_on') {
+ console.log('frank says:', data.toString());
+ if (data === 'ok') {
+ } else if (data === 'mic_on') {
 
-  } else if (data === 'mic_off') {
+ } else if (data === 'mic_off') {
 
-  } else if (data === 'refresh') {
-    connection.getAllParticipants().forEach((item) => {
-      //  peerlist.set(item, {status: 'play', approved: 'true'})
-      peerlist.get(item).status = 'play;';
-      peerlist.get(item).approved = 'true';
-      console.log(socketEmitter);
-      socketEmitter.emit('update');
-    });
-    // socket.write(JSON.stringify([...peerlist]));
-    writeSocket(socket);
-  } else {
-    const lastlist = new Map(window.peerlist);
-    window.console.log(lastlist);
-    const dataobj = JSON.parse(data.toString().trim());
-    if (dataobj.selectAudioSource) {
-      return;
-    }
-    dataobj.forEach((item, key) => {
-      console.log(item);
-      peerlist.set(item[0], item[1]);
-    });
-    peelistHandler(lastlist);
-  }
-}*/
+ } else if (data === 'refresh') {
+ connection.getAllParticipants().forEach((item) => {
+ //  peerlist.set(item, {status: 'play', approved: 'true'})
+ peerlist.get(item).status = 'play;';
+ peerlist.get(item).approved = 'true';
+ console.log(socketEmitter);
+ socketEmitter.emit('update');
+ });
+ // socket.write(JSON.stringify([...peerlist]));
+ writeSocket(socket);
+ } else {
+ const lastlist = new Map(window.peerlist);
+ window.console.log(lastlist);
+ const dataobj = JSON.parse(data.toString().trim());
+ if (dataobj.selectAudioSource) {
+ return;
+ }
+ dataobj.forEach((item, key) => {
+ console.log(item);
+ peerlist.set(item[0], item[1]);
+ });
+ peelistHandler(lastlist);
+ }
+ }*/
 function tcpInHandler(data, socket) {
   console.log('frank says:', data.toString());
   if (data == 'ok') {
@@ -513,39 +544,39 @@ function tcpInHandler(data, socket) {
       peerlist.set(user, item);
     });
     peelistHandler(lastlist);
-  /*  lastlist.forEach((item, key) => {
-      if (peerlist.get(key)) {
-        if (item.sid) {
-          peerlist.get(key).sid = item.sid;
-        }
-        if (item.info) {
-          peerlist.get(key).info = item.info;
-        }
-        if (item.status === peerlist.get(key).status) {
-          console.log(item, 'unchanged');
-        } else {
-          console.log('changed', item);
-          if (peerlist.get(key).status === 'play') {
-            connection.sendCustomMessage({
-                                           messageFor: key,
-                                           action: 'play',
-                                           hostId: roomid,
-                                           password: 'password',
-                                           guestInfo: peerlist.info,
-                                         });
-          }
-          if (peerlist.get(key).status === 'stop') {
-            connection.sendCustomMessage({
-                                           messageFor: key,
-                                           action: 'stop',
-                                           hostId: roomid,
-                                           password: 'password',
-                                           guestInfo: peerlist.info,
-                                         });
-          }
-        }
-      }
-    });*/
+    /*  lastlist.forEach((item, key) => {
+     if (peerlist.get(key)) {
+     if (item.sid) {
+     peerlist.get(key).sid = item.sid;
+     }
+     if (item.info) {
+     peerlist.get(key).info = item.info;
+     }
+     if (item.status === peerlist.get(key).status) {
+     console.log(item, 'unchanged');
+     } else {
+     console.log('changed', item);
+     if (peerlist.get(key).status === 'play') {
+     connection.sendCustomMessage({
+     messageFor: key,
+     action: 'play',
+     hostId: roomid,
+     password: 'password',
+     guestInfo: peerlist.info,
+     });
+     }
+     if (peerlist.get(key).status === 'stop') {
+     connection.sendCustomMessage({
+     messageFor: key,
+     action: 'stop',
+     hostId: roomid,
+     password: 'password',
+     guestInfo: peerlist.info,
+     });
+     }
+     }
+     }
+     });*/
   }
   socketEmitter.emit('update');
 }
