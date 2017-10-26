@@ -86,7 +86,7 @@ app.on('ready', async () => {
                                      height: 728
                                    });
   }
-  mainWindow.openDevTools();
+  //mainWindow.openDevTools();
 
   const log_tcp = net.createServer((socket) => {
     socket.name = `${socket.remoteAddress}:${socket.remotePort}`;
