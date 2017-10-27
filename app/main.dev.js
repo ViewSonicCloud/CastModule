@@ -79,6 +79,7 @@ app.on('ready', async () => {
                                      width: 1024,
                                      height: 728
                                    });
+    mainWindow.openDevTools();
   } else {
     mainWindow = new BrowserWindow({
                                      show: false,
@@ -86,7 +87,7 @@ app.on('ready', async () => {
                                      height: 728
                                    });
   }
-  //mainWindow.openDevTools();
+
 
   const log_tcp = net.createServer((socket) => {
     socket.name = `${socket.remoteAddress}:${socket.remotePort}`;

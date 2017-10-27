@@ -1,14 +1,14 @@
 {
   "name": "viewboardcast",
   "productName": "cast",
-  "version": "1.0.0",
+  "version": "1.7.0",
   "description": "ViewBoard Casting",
   "main": "./main.prod.js",
   "author": {
     "name": "Joey Chen"
   },
   "scripts": {
-    "postinstall": "npm rebuild --runtime=electron --target=1.6.6 --disturl=https://atom.io/download/atom-shell --build-from-source"
+    "postinstall": "npm rebuild --runtime=electron --target=1.7.9 --disturl=https://atom.io/download/atom-shell --build-from-source"
   },
   "license": "MIT",
   "dependencies": {
