@@ -137,9 +137,9 @@ request.get(`${apiUrl}/api/account/${argv.uid}/role`)
                    mandatory: {
                      chromeMediaSource: 'desktop',
                      minWidth: 1280,
-                     maxWidth: 1280,
+                     maxWidth: 1920,
                      minHeight: 720,
-                     maxHeight: 720
+                     maxHeight: 1080
                    }
                  }
                }
@@ -380,7 +380,7 @@ function SignalHandShake() {
         if (message.action && message.action === 'mute') {
           //  console.log(message);
           if (peerlist.get(message.guestId)) {
-            peerlist.get(message.guestId).info.pauesd = true;
+            peerlist.get(message.guestId).info.paused = true;
             hb.set(message.guestId, 5);
           }
           socketEmitter.emit('update');

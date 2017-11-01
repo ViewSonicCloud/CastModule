@@ -11,7 +11,6 @@ connection.dontCaptureUserMedia = true;
 connection.socketURL = 'https://cast-sig.myviewboard.com/';
 connection.socketMessageEvent = 'video-broadcast';
 connection.codecs.video = 'H264';
-
 connection.session={
 data:true
 }
