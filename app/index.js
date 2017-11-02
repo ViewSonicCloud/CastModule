@@ -136,6 +136,7 @@ request.get(`${apiUrl}/api/account/${argv.uid}/role`)
                  video: {
                    mandatory: {
                      chromeMediaSource: 'desktop',
+                     chromeMediaSourceId: sources[i].id,
                      minWidth: 1280,
                      maxWidth: 1920,
                      minHeight: 720,
