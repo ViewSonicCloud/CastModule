@@ -44,10 +44,32 @@ const tier = {
   cast_out_queue: -1,
   cast_in_queue: -1
 };
+const winston = require('winston');
+require('winston-loggly-bulk');
+winston.add(winston.transports.Loggly, {
+  token: "ed0d89e6-c9f5-401e-bded-f9b7402d540f",
+  subdomain: "vsssicast",
+  tags: ["Cast-Module"],
+  json:true
+});
+process.on('uncaughtException', (err) => {
+  //logger.log('whoops! There was an uncaught error', err);
+  winston.log(err);
+
+  // do a graceful shutdown,
+  // close the database connection etc.
+  //process.exit(1);
+});
+
+
+
+
 const process = require('electron').remote.process;
 var ipc = require('electron').ipcRenderer;
 window.onerror = function (error, url, line) {
+  winston.log(error);
   ipc.send('errorInWindow', {code: 0, error: error});
+
 };
 //ipc.send('initWindow', {code: 200, message: 'start'});
 let roomid = 'local';
@@ -121,13 +143,6 @@ request.get(`${apiUrl}/api/account/${argv.uid}/role`)
              console.log(sources[i]);
              if (sources[i].id === 'screen:0:0') {
                constraint = {
-                 // audio:true,
-                 //connection.DetectRTC.audioOutputDevices.length > 0,
-                 /*    audio: {
-                  mandatory: {
-                  chromeMediaSource: 'desktop'
-                  }
-                  },*/
                  audio: connection.DetectRTC.audioOutputDevices.length > 0 ? {
                    mandatory: {
                      chromeMediaSource: 'desktop',
@@ -152,6 +167,8 @@ request.get(`${apiUrl}/api/account/${argv.uid}/role`)
            }
          });
        });
+
+
 connection.onmessage = function (event) {
   console.log('webrtcdata:', event);
 }
@@ -161,9 +178,7 @@ connection.sendCustomMessage = function (message) {
   connection.socket.emit(connection.socketCustomEvent, message);
 };
 connection.iceServers = [];
-/*request.get('https://cast.myviewboard.com/api/ice').end((err, res) => {
- connection.iceServers = connection.iceServers.concat(res.body);
- });*/
+
 request.get('https://wt0q02pbsc.execute-api.us-east-1.amazonaws.com/prod/geticeserv').set('x-api-key', 'EEgA3n9rOW7d9OeyRP8187ZupSsaFpEzDHVBX4b0').end((err, res) => {
   if (err) {
     return ipc.send('errorInWindow', {code: 504, error: err});
@@ -174,6 +189,7 @@ request.get('https://wt0q02pbsc.execute-api.us-east-1.amazonaws.com/prod/getices
     connection.iceServers = connection.iceServers.concat(item);
   });
 });
+
 let constraint = {};
 function handleError(err) {
   console.log(err);
@@ -213,12 +229,6 @@ function SignalHandShake() {
       //throw {error: {isOnline: isOnline}};
     }
     if (!connection.socket) connection.connectSocket()//.onerror((err)=>console.log(err));
-  /*  connection.socket.on('disconnect', function() {
-      if (connection.enableLogs) {
-        console.warn('socket.io connection is closed');
-      }
-      connection.connectSocket();
-    });*/
     connection.socket.on(connection.socketCustomEvent, (message) => {
 
       // console.log(message);
@@ -490,41 +500,9 @@ function addAudio() {
   };
   navigator.getUserMedia(constraints, successCallback, errorCallback);
 }
-function removeAudio() {
-  connection.attachStreams[0].getAudioTracks().forEach((item) => {
-  })
-}
-/*function socketInHandler(data, socket) {
- console.log('frank says:', data.toString());
- if (data === 'ok') {
- } else if (data === 'mic_on') {
 
- } else if (data === 'mic_off') {
 
- } else if (data === 'refresh') {
- connection.getAllParticipants().forEach((item) => {
- //  peerlist.set(item, {status: 'play', approved: 'true'})
- peerlist.get(item).status = 'play;';
- peerlist.get(item).approved = 'true';
- console.log(socketEmitter);
- socketEmitter.emit('update');
- });
- // socket.write(JSON.stringify([...peerlist]));
- writeSocket(socket);
- } else {
- const lastlist = new Map(window.peerlist);
- window.console.log(lastlist);
- const dataobj = JSON.parse(data.toString().trim());
- if (dataobj.selectAudioSource) {
- return;
- }
- dataobj.forEach((item, key) => {
- console.log(item);
- peerlist.set(item[0], item[1]);
- });
- peelistHandler(lastlist);
- }
- }*/
+
 function tcpInHandler(data, socket) {
   console.log('frank says:', data.toString());
   if (data == 'ok') {
@@ -545,42 +523,11 @@ function tcpInHandler(data, socket) {
       peerlist.set(user, item);
     });
     peelistHandler(lastlist);
-    /*  lastlist.forEach((item, key) => {
-     if (peerlist.get(key)) {
-     if (item.sid) {
-     peerlist.get(key).sid = item.sid;
-     }
-     if (item.info) {
-     peerlist.get(key).info = item.info;
-     }
-     if (item.status === peerlist.get(key).status) {
-     console.log(item, 'unchanged');
-     } else {
-     console.log('changed', item);
-     if (peerlist.get(key).status === 'play') {
-     connection.sendCustomMessage({
-     messageFor: key,
-     action: 'play',
-     hostId: roomid,
-     password: 'password',
-     guestInfo: peerlist.info,
-     });
-     }
-     if (peerlist.get(key).status === 'stop') {
-     connection.sendCustomMessage({
-     messageFor: key,
-     action: 'stop',
-     hostId: roomid,
-     password: 'password',
-     guestInfo: peerlist.info,
-     });
-     }
-     }
-     }
-     });*/
+
   }
   socketEmitter.emit('update');
 }
+
 function peelistHandler(lastlist) {
   lastlist.forEach((item, key) => {
     if (peerlist.get(key)) {

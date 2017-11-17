@@ -203,7 +203,8 @@
     "rxjs": "^5.4.3",
     "socket.io": "^2.0.3",
     "source-map-support": "^0.4.15",
-    "superagent": "^3.6.0"
+    "superagent": "^3.6.0",
+    "winston-loggly-bulk": "^2.0.1"
   },
   "devEngines": {
     "node": ">=7.x",
