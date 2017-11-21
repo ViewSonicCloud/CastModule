@@ -556,7 +556,6 @@ function peelistHandler(lastlist) {
 setInterval(() => {
   peerlist.forEach((item, key) => {
     connection.checkPresence(key, (isRoomExist, peerKey) => {
-      console.log(peerKey, isRoomExist)
       if (!isRoomExist) {peerlist.delete(peerKey);}
     });
   });

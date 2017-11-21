@@ -75,14 +75,14 @@ app.on('window-all-closed', () => {
 app.on('ready', async () => {
   if (process.env.NODE_ENV === 'development') {
     mainWindow = new BrowserWindow({
-                                     show: true,
+                                     show: false,
                                      width: 1024,
                                      height: 728
                                    });
     mainWindow.openDevTools();
   } else {
     mainWindow = new BrowserWindow({
-                                     show: true,
+                                     show: false,
                                      width: 1024,
                                      height: 728
                                    });
