@@ -45,33 +45,52 @@ const tier = {
   cast_out_queue: -1,
   cast_in_queue: -1
 };
-const winston = require('winston');
+var winston = require('winston');
 require('winston-loggly-bulk');
+
 winston.add(winston.transports.Loggly, {
-  token: "ed0d89e6-c9f5-401e-bded-f9b7402d540f",
-  subdomain: "vsssicast",
-  tags: ["Cast-Module"],
-  json: true
+  token: '9c45b61e-f16e-449b-8576-8c8493271487',
+  subdomain: 'vsssicloud',
+  tags: ['Cast-Module'],
+  json:true
 });
+
+
 const process = require('electron').remote.process;
 const ipc = require('electron').ipcRenderer;
-window.onerror = function (error, url, line) {
-  winston.log(error);
-  ipc.send('errorInWindow', {code: 0, error: error});
-};
-process.on('uncaughtException', (error) => {
-  //logger.log('whoops! There was an uncaught error', err);
-  winston.log(error);
-  // do a graceful shutdown,
-  // close the database connection etc.
-  //process.exit(1);
-});
+
+function startLog(userid='') {
+  window.onerror = function (error, url, line) {
+    console.log(error)
+    winston.log('error',error,{userid:userid});
+    ipc.send('errorInWindow', {code: 0, error: error});
+  };
+  process.on('uncaughtException', (error) => {
+    console.log(error)
+    winston.log('exception',error,{userid:userid});
+  });
+  const _log=console.log
+  console.log=function (...args) {
+    winston.log('log',args,{userid:userid});
+    _log(args);
+  }
+  console.info=function (...args) {
+    winston.log('info',args,{userid:userid});
+  }
+  console.log('is log');
+}
+
+
+
 //ipc.send('initWindow', {code: 200, message: 'start'});
 let roomid = 'local';
+
 console.log(process.argv);
 let processArgs = [];
+
 argv.uid = '71ba9a6a-9c7a-48b1-adfd-1fee0e04ee0c';
 process.argv.forEach((item) => {
+
   console.log(item);
   if (item.indexOf('--userid=') !== -1) {
     argv.uid = item.slice(item.indexOf('=') + 1, item.length);
@@ -111,6 +130,7 @@ request.get(`${apiUrl}/api/account/${argv.uid}/role`)
            email: res.body.email
          };
          roomid = res.body.name.split(' ').join('_').toLowerCase();
+         startLog(roomid);
          connection.userid = roomid;
          connection.socketCustomEvent = roomid;
          console.log(res.body.permission.name);
@@ -560,80 +580,4 @@ setInterval(() => {
     });
   });
 }, 2000);
-
-
-
-
-/*const ob_checkPresence = (peerKey) => {
- return Observable.create((observer) => {
- connection.checkPresence(peerKey, function (isRoomExist, roomid) {
- console.log(peerKey, isRoomExist)
- observer.next(isRoomExist);
- });
- });
- }*/
-
-//ditch heartbeat from browser
-/*Observable.from(peerlist).map(item=>ob_checkPresence(item[0])).concatAll().subscribe(
- data=>console.log(data)
- )*/
-
-/*
- setInterval(() => {
- hb.forEach((item, key) => {
- item = item-- <= 0 ? 0 : item--;
- hb.set(key, item);
- });
- peerlist.forEach((item, key) => {
- if (hb.get(key) === 0) {
- //check if connection still going
- connection.getAllParticipants().forEach((item) => {
- if (key === item) {
- return false;
- }
- });
- peerlist.delete(key);
- hb.delete(key);
- console.log(key, 'is kicked');
- connection.sendCustomMessage({
- messageFor: key,
- action: 'kicked',
- hostId: roomid
- });
- socketEmitter.emit('update');
- }
- });
- connection.getAllParticipants().forEach((item) => {
- if (peerlist.get(item)) {
- } else {
- connection.sendCustomMessage({
- messageFor: item,
- action: 'stop',
- hostId: roomid,
- guestInfo: connection.extra,
- });
- connection.sendCustomMessage({
- messageFor: item,
- action: 'dropped',
- hostId: roomid,
- guestInfo: connection.extra,
- });
- // connection.close(item);
- }
- });
- // console.log(hb);
- window.hb = hb;
- }, 2000);
- setInterval(() => {
- // console.log(peerlist);
- peerlist.forEach((item, key) => {
- if (hb.get(key) === undefined) {
- peerlist.delete(key);
- //  window.peerlist=peerlist;
- socketEmitter.emit('update');
- }
- });
- }, 5000);
- */
-
 

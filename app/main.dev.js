@@ -17,12 +17,19 @@ const net = require('net');
 var ipc = require('electron').ipcMain;
 const log_clients = [];
 var socketqueue = [];
+
+
+
 ipc.on('initWindow', function (event, data) {
   console.log(JSON.stringify(data));
   log_clients.forEach((log_client) => {
     log_client.write(JSON.stringify(data) + '\n\n');
   });
 });
+
+
+
+
 ipc.on('errorInWindow', function (event, data) {
   console.log(event, data);
   console.log(JSON.stringify(data));
