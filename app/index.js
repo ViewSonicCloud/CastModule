@@ -32,6 +32,7 @@ import {remote, desktopCapturer} from 'electron';
 import connection from './utils/connection';
 import peerlist from './utils/peerlist';
 window.Observable = Rx.Observable;
+const Observable = Rx.Observable;
 const request = superagent;
 const net = require('net');
 const socketEmitter = require('./utils/SocketEmitter');
@@ -50,27 +51,21 @@ winston.add(winston.transports.Loggly, {
   token: "ed0d89e6-c9f5-401e-bded-f9b7402d540f",
   subdomain: "vsssicast",
   tags: ["Cast-Module"],
-  json:true
+  json: true
 });
-process.on('uncaughtException', (err) => {
+const process = require('electron').remote.process;
+const ipc = require('electron').ipcRenderer;
+window.onerror = function (error, url, line) {
+  winston.log(error);
+  ipc.send('errorInWindow', {code: 0, error: error});
+};
+process.on('uncaughtException', (error) => {
   //logger.log('whoops! There was an uncaught error', err);
-  winston.log(err);
-
+  winston.log(error);
   // do a graceful shutdown,
   // close the database connection etc.
   //process.exit(1);
 });
-
-
-
-
-const process = require('electron').remote.process;
-var ipc = require('electron').ipcRenderer;
-window.onerror = function (error, url, line) {
-  winston.log(error);
-  ipc.send('errorInWindow', {code: 0, error: error});
-
-};
 //ipc.send('initWindow', {code: 200, message: 'start'});
 let roomid = 'local';
 console.log(process.argv);
@@ -167,8 +162,6 @@ request.get(`${apiUrl}/api/account/${argv.uid}/role`)
            }
          });
        });
-
-
 connection.onmessage = function (event) {
   console.log('webrtcdata:', event);
 }
@@ -178,7 +171,6 @@ connection.sendCustomMessage = function (message) {
   connection.socket.emit(connection.socketCustomEvent, message);
 };
 connection.iceServers = [];
-
 request.get('https://wt0q02pbsc.execute-api.us-east-1.amazonaws.com/prod/geticeserv').set('x-api-key', 'EEgA3n9rOW7d9OeyRP8187ZupSsaFpEzDHVBX4b0').end((err, res) => {
   if (err) {
     return ipc.send('errorInWindow', {code: 504, error: err});
@@ -189,7 +181,6 @@ request.get('https://wt0q02pbsc.execute-api.us-east-1.amazonaws.com/prod/getices
     connection.iceServers = connection.iceServers.concat(item);
   });
 });
-
 let constraint = {};
 function handleError(err) {
   console.log(err);
@@ -326,7 +317,7 @@ function SignalHandShake() {
                                                action: 'startok',
                                                hostId: roomid,
                                              });
-                 if (!connection.socket) connection.connectSocket();
+                if (!connection.socket) connection.connectSocket();
                 connection.socket.emit(message.guestId, 'startok');
                 console.log('startok');
                 socketEmitter.emit('update');
@@ -500,13 +491,10 @@ function addAudio() {
   };
   navigator.getUserMedia(constraints, successCallback, errorCallback);
 }
-
-
-
 function tcpInHandler(data, socket) {
   console.log('frank says:', data.toString());
-  if (data == 'ok') {
-  } else if (data == 'refresh') {
+  if (data === 'ok') {
+  } else if (data === 'refresh') {
     connection.getAllParticipants().forEach((item) => {
       //  peerlist.set(item, {status: 'play', approved: 'true'})
       peerlist.get(item).status = 'play;';
@@ -523,11 +511,9 @@ function tcpInHandler(data, socket) {
       peerlist.set(user, item);
     });
     peelistHandler(lastlist);
-
   }
   socketEmitter.emit('update');
 }
-
 function peelistHandler(lastlist) {
   lastlist.forEach((item, key) => {
     if (peerlist.get(key)) {
@@ -566,60 +552,89 @@ function peelistHandler(lastlist) {
     }
   });
 }
+
 setInterval(() => {
-  hb.forEach((item, key) => {
-    item = item-- <= 0 ? 0 : item--;
-    hb.set(key, item);
-  });
   peerlist.forEach((item, key) => {
-    if (hb.get(key) === 0) {
-      //check if connection still going
-      connection.getAllParticipants().forEach((item) => {
-        if (key === item) {
-          return false;
-        }
-      });
-      peerlist.delete(key);
-      hb.delete(key);
-      console.log(key, 'is kicked');
-      connection.sendCustomMessage({
-                                     messageFor: key,
-                                     action: 'kicked',
-                                     hostId: roomid
-                                   });
-      socketEmitter.emit('update');
-    }
+    connection.checkPresence(key, (isRoomExist, peerKey) => {
+      console.log(peerKey, isRoomExist)
+      if (!isRoomExist) {peerlist.delete(peerKey);}
+    });
   });
-  connection.getAllParticipants().forEach((item) => {
-    if (peerlist.get(item)) {
-    } else {
-      connection.sendCustomMessage({
-                                     messageFor: item,
-                                     action: 'stop',
-                                     hostId: roomid,
-                                     guestInfo: connection.extra,
-                                   });
-      connection.sendCustomMessage({
-                                     messageFor: item,
-                                     action: 'dropped',
-                                     hostId: roomid,
-                                     guestInfo: connection.extra,
-                                   });
-      // connection.close(item);
-    }
-  });
-// console.log(hb);
-  window.hb = hb;
 }, 2000);
-setInterval(() => {
-  // console.log(peerlist);
-  peerlist.forEach((item, key) => {
-    if (hb.get(key) === undefined) {
-      peerlist.delete(key);
-      //  window.peerlist=peerlist;
-      socketEmitter.emit('update');
-    }
-  });
-}, 5000);
+
+
+
+
+/*const ob_checkPresence = (peerKey) => {
+ return Observable.create((observer) => {
+ connection.checkPresence(peerKey, function (isRoomExist, roomid) {
+ console.log(peerKey, isRoomExist)
+ observer.next(isRoomExist);
+ });
+ });
+ }*/
+
+//ditch heartbeat from browser
+/*Observable.from(peerlist).map(item=>ob_checkPresence(item[0])).concatAll().subscribe(
+ data=>console.log(data)
+ )*/
+
+/*
+ setInterval(() => {
+ hb.forEach((item, key) => {
+ item = item-- <= 0 ? 0 : item--;
+ hb.set(key, item);
+ });
+ peerlist.forEach((item, key) => {
+ if (hb.get(key) === 0) {
+ //check if connection still going
+ connection.getAllParticipants().forEach((item) => {
+ if (key === item) {
+ return false;
+ }
+ });
+ peerlist.delete(key);
+ hb.delete(key);
+ console.log(key, 'is kicked');
+ connection.sendCustomMessage({
+ messageFor: key,
+ action: 'kicked',
+ hostId: roomid
+ });
+ socketEmitter.emit('update');
+ }
+ });
+ connection.getAllParticipants().forEach((item) => {
+ if (peerlist.get(item)) {
+ } else {
+ connection.sendCustomMessage({
+ messageFor: item,
+ action: 'stop',
+ hostId: roomid,
+ guestInfo: connection.extra,
+ });
+ connection.sendCustomMessage({
+ messageFor: item,
+ action: 'dropped',
+ hostId: roomid,
+ guestInfo: connection.extra,
+ });
+ // connection.close(item);
+ }
+ });
+ // console.log(hb);
+ window.hb = hb;
+ }, 2000);
+ setInterval(() => {
+ // console.log(peerlist);
+ peerlist.forEach((item, key) => {
+ if (hb.get(key) === undefined) {
+ peerlist.delete(key);
+ //  window.peerlist=peerlist;
+ socketEmitter.emit('update');
+ }
+ });
+ }, 5000);
+ */
 
 
