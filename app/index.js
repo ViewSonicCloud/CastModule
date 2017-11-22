@@ -47,50 +47,40 @@ const tier = {
 };
 var winston = require('winston');
 require('winston-loggly-bulk');
-
 winston.add(winston.transports.Loggly, {
   token: '9c45b61e-f16e-449b-8576-8c8493271487',
   subdomain: 'vsssicloud',
   tags: ['Cast-Module'],
-  json:true
+  json: true
 });
-
-
 const process = require('electron').remote.process;
 const ipc = require('electron').ipcRenderer;
-
-function startLog(userid='') {
+function startLog(userid = '') {
   window.onerror = function (error, url, line) {
     console.log(error)
-    winston.log('error',error,{userid:userid});
+    winston.log('error', error, {userid: userid});
     ipc.send('errorInWindow', {code: 0, error: error});
   };
   process.on('uncaughtException', (error) => {
     console.log(error)
-    winston.log('exception',error,{userid:userid});
+    winston.log('exception', error, {userid: userid});
   });
-  const _log=console.log
-  console.log=function (...args) {
-    winston.log('log',args,{userid:userid});
-    _log(args);
-  }
-  console.info=function (...args) {
-    winston.log('info',args,{userid:userid});
-  }
+  console.log = function () {
+    this.apply(console, arguments);
+    winston.log('info', arguments, {userid: userid});
+  }.bind(console.log);
+  console.info = function () {
+    this.apply(console, arguments);
+    winston.log('info', arguments, {userid: userid});
+  }.bind(console.info);
   console.log('is log');
 }
-
-
-
 //ipc.send('initWindow', {code: 200, message: 'start'});
 let roomid = 'local';
-
 console.log(process.argv);
 let processArgs = [];
-
 argv.uid = '71ba9a6a-9c7a-48b1-adfd-1fee0e04ee0c';
 process.argv.forEach((item) => {
-
   console.log(item);
   if (item.indexOf('--userid=') !== -1) {
     argv.uid = item.slice(item.indexOf('=') + 1, item.length);
@@ -572,11 +562,13 @@ function peelistHandler(lastlist) {
     }
   });
 }
-
 setInterval(() => {
   peerlist.forEach((item, key) => {
     connection.checkPresence(key, (isRoomExist, peerKey) => {
-      if (!isRoomExist) {peerlist.delete(peerKey);}
+      if (!isRoomExist) {
+        peerlist.delete(peerKey);
+        socketEmitter.emit('update');
+      }
     });
   });
 }, 2000);
