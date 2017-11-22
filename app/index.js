@@ -65,10 +65,10 @@ function startLog(userid = '') {
     console.log(error)
     winston.log('exception', error, {userid: userid});
   });
-  console.log = function () {
-    this.apply(console, arguments);
-    winston.log('info', arguments, {userid: userid});
-  }.bind(console.log);
+   console.log = function () {
+   this.apply(console, arguments);
+   winston.log('info', arguments, {userid: userid});
+   }.bind(console.log);
   console.info = function () {
     this.apply(console, arguments);
     winston.log('info', arguments, {userid: userid});
@@ -572,4 +572,7 @@ setInterval(() => {
     });
   });
 }, 2000);
+connection.onUserStatusChanged = function (event) {
+  console.log('statuschange', event);
+}
 
