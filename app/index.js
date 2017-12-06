@@ -1,32 +1,3 @@
-/*
- import React from 'react';
- import { render } from 'react-dom';
- import { AppContainer } from 'react-hot-loader';
- import Root from './containers/Root';
- import { configureStore, history } from './store/configureStore';
- import './app.global.css';
-
- const store = configureStore();
-
- render(
- <AppContainer>
- <Root store={store} history={history} />
- </AppContainer>,
- document.getElementById('root')
- );
-
- if (module.hot) {
- module.hot.accept('./containers/Root', () => {
- const NextRoot = require('./containers/Root'); // eslint-disable-line global-require
- render(
- <AppContainer>
- <NextRoot store={store} history={history} />
- </AppContainer>,
- document.getElementById('root')
- );
- });
- }
- */
 import Rx from 'rxjs/Rx';
 import {remote, desktopCapturer} from 'electron';
 import connection from './utils/connection';
@@ -38,7 +9,7 @@ const request = superagent;
 const net = require('net');
 const socketEmitter = require('./utils/SocketEmitter');
 const clients = [];
-const argv = {uid: '', environment: 'dev'};
+const argv = {uid: '', environment: 'stage'};
 const hb = new Map();
 const tier = {
   cast_out_limit: -1,
@@ -97,7 +68,7 @@ process.argv.forEach((item) => {
 });
 document.querySelector('#output').innerHTML = process.argv;
 let apiUrl = 'https://devapi.myviewboard.com';
-argv.environment = 'stage';
+//argv.environment = 'stage';
 switch (argv.environment) {
   case 'dev':
     apiUrl = 'https://devapi.myviewboard.com';
@@ -209,7 +180,7 @@ function gotStream(stream) {
   console.log(stream);
   connection.addStream(stream);
   request.post('https://lta1a2jg8g.execute-api.us-east-1.amazonaws.com/prod/signals').send(
-    {host: roomid, endpoints: [], server: 'https://cast-sig.myviewboard.com/'}).end(
+    {host: roomid, endpoints: [], server: 'https://cast-sig.myviewboard.com/', connectionData: {gen:argv.pass}}).end(
     (err, res) => { SignalHandShake(); }
   );
   const constraints = {
