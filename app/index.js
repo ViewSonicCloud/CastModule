@@ -32,6 +32,7 @@ import {remote, desktopCapturer} from 'electron';
 import connection from './utils/connection';
 import peerlist from './utils/peerlist';
 window.Observable = Rx.Observable;
+const generatePassword = require('password-generator');
 const Observable = Rx.Observable;
 const request = superagent;
 const net = require('net');
@@ -65,10 +66,10 @@ function startLog(userid = '') {
     console.log(error)
     winston.log('exception', error, {userid: userid});
   });
-   console.log = function () {
-   this.apply(console, arguments);
-   winston.log('info', arguments, {userid: userid});
-   }.bind(console.log);
+  console.log = function () {
+    this.apply(console, arguments);
+    winston.log('info', arguments, {userid: userid});
+  }.bind(console.log);
   console.info = function () {
     this.apply(console, arguments);
     winston.log('info', arguments, {userid: userid});
@@ -80,6 +81,7 @@ let roomid = 'local';
 console.log(process.argv);
 let processArgs = [];
 argv.uid = '71ba9a6a-9c7a-48b1-adfd-1fee0e04ee0c';
+argv.pass = generatePassword();
 process.argv.forEach((item) => {
   console.log(item);
   if (item.indexOf('--userid=') !== -1) {
@@ -94,7 +96,8 @@ process.argv.forEach((item) => {
   }
 });
 document.querySelector('#output').innerHTML = process.argv;
-let apiUrl = 'dev://dev.myviewboard.com';
+let apiUrl = 'https://devapi.myviewboard.com';
+argv.environment = 'stage';
 switch (argv.environment) {
   case 'dev':
     apiUrl = 'https://devapi.myviewboard.com';
@@ -144,8 +147,8 @@ request.get(`${apiUrl}/api/account/${argv.uid}/role`)
          desktopCapturer.getSources({types: ['window', 'screen']}, (error, sources) => {
            if (error) throw error;
            console.log(connection.DetectRTC.audioOutputDevices.length > 0);
+           console.log('screensource', sources);
            for (let i = 0; i < sources.length; i++) {
-             console.log(sources[i]);
              if (sources[i].id === 'screen:0:0') {
                constraint = {
                  audio: connection.DetectRTC.audioOutputDevices.length > 0 ? {
@@ -418,7 +421,7 @@ function SignalHandShake() {
         }
       }
     });
-    connection.openOrJoin(roomid, 'password');
+    connection.openOrJoin(roomid, argv.pass);
     /*   setTimeout(() => {
      connection.becomePublicModerator('viewsonic');
      }, 1000); */
@@ -538,23 +541,23 @@ function peelistHandler(lastlist) {
       } else {
         console.log('changed', item);
         if (peerlist.get(key).status === 'play') {
-          window.console.log(connection);
-          window.connection.sendCustomMessage({
-                                                messageFor: key,
-                                                action: 'play',
-                                                hostId: roomid,
-                                                password: 'password',
-                                                guestInfo: connection.extra,
-                                              });
+          console.log(connection);
+          connection.sendCustomMessage({
+                                         messageFor: key,
+                                         action: 'play',
+                                         hostId: roomid,
+                                         password: argv.pass,
+                                         guestInfo: connection.extra,
+                                       });
         }
         if (peerlist.get(key).status === 'stop') {
-          window.connection.sendCustomMessage({
-                                                messageFor: key,
-                                                action: 'stop',
-                                                hostId: roomid,
-                                                password: 'password',
-                                                guestInfo: connection.extra,
-                                              });
+          connection.sendCustomMessage({
+                                         messageFor: key,
+                                         action: 'stop',
+                                         hostId: roomid,
+                                         password: argv.pass,
+                                         guestInfo: connection.extra,
+                                       });
         }
         console.log(socketEmitter);
         socketEmitter.emit('update');
@@ -574,5 +577,6 @@ setInterval(() => {
 }, 2000);
 connection.onUserStatusChanged = function (event) {
   console.log('statuschange', event);
+  //winston.log('info', event, {userid: userid});
 }
 

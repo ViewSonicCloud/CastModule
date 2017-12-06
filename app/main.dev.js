@@ -17,19 +17,12 @@ const net = require('net');
 var ipc = require('electron').ipcMain;
 const log_clients = [];
 var socketqueue = [];
-
-
-
 ipc.on('initWindow', function (event, data) {
   console.log(JSON.stringify(data));
   log_clients.forEach((log_client) => {
     log_client.write(JSON.stringify(data) + '\n\n');
   });
 });
-
-
-
-
 ipc.on('errorInWindow', function (event, data) {
   console.log(event, data);
   console.log(JSON.stringify(data));
@@ -94,8 +87,6 @@ app.on('ready', async () => {
                                      height: 728
                                    });
   }
-
-
   const log_tcp = net.createServer((socket) => {
     socket.name = `${socket.remoteAddress}:${socket.remotePort}`;
     socket.setNoDelay();
@@ -108,6 +99,9 @@ app.on('ready', async () => {
                 console.log(data.toString());
                 if (data && data.toString() === "start") {
                   mainWindow.loadURL(`file://${__dirname}/app.html`);
+                }
+                if (data && data.toString() === 'debug') {
+                  mainWindow.openDevTools();
                 }
               }
     );
@@ -140,7 +134,8 @@ function windowInit() {};
 var exec = require('child_process').exec;
 var cmd = exec('tasklist |find /i "vBoard.exe" ');
 var ipcs = [];
-Rx.Observable.interval(5000).subscribe({next: (value) => {
+Rx.Observable.interval(5000).subscribe({
+                                         next: (value) => {
                                            var isvblive = '';
                                            cmd = exec('tasklist |find /i "vBoard.exe" ');
                                            cmd.stdout.on('data', function (data) {
