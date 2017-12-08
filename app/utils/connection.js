@@ -1,4 +1,25 @@
 const connection = new RTCMultiConnection();
+
+var MediaStream = window.MediaStream;
+
+if (typeof MediaStream === 'undefined' && typeof webkitMediaStream !== 'undefined') {
+  MediaStream = webkitMediaStream;
+}
+
+/*global MediaStream:true */
+if (typeof MediaStream !== 'undefined' && !('stop' in MediaStream.prototype)) {
+  MediaStream.prototype.stop = function() {
+    this.getAudioTracks().forEach(function(track) {
+      track.stop();
+    });
+
+    this.getVideoTracks().forEach(function(track) {
+      track.stop();
+    });
+  };
+}
+
+
 window.connection = connection;
 connection.bandwidth = {
   audio: 128,  // 50 kbps

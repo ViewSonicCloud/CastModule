@@ -114,6 +114,15 @@ request.get(`${apiUrl}/api/account/${argv.uid}/role`)
                break;
            }
          });
+         request.post('https://lta1a2jg8g.execute-api.us-east-1.amazonaws.com/prod/signals').send(
+           {
+             host: roomid,
+             endpoints: [],
+             server: 'https://cast-sig.myviewboard.com/',
+             connectionData: {gen: argv.pass}
+           }).end(
+           (err, res) => { SignalHandShake(); }
+         );
          desktopCapturer.getSources({types: ['window', 'screen']}, (error, sources) => {
            if (error) throw error;
            console.log(connection.DetectRTC.audioOutputDevices.length > 0);
@@ -139,7 +148,7 @@ request.get(`${apiUrl}/api/account/${argv.uid}/role`)
                };
                // navigator.webkitGetUserMedia({audio: mandatory:{chromeMediaSource: 'desktop'}},function(stream) {},function(err) {})
                // ipc.send('initWindow', {code: 200, message: JSON.stringify(constraint)});
-               navigator.webkitGetUserMedia(constraint, gotStream, handleError);
+               // navigator.webkitGetUserMedia(constraint, gotStream, handleError);
                return;
              }
            }
@@ -148,6 +157,21 @@ request.get(`${apiUrl}/api/account/${argv.uid}/role`)
 connection.onmessage = function (event) {
   console.log('webrtcdata:', event);
 };
+connection.setStream = function () {
+  connection.attachStreams.forEach((stream) => {
+    stream.stop();
+    stream = null;
+  });
+  connection.attachStreams = [];
+  navigator.webkitGetUserMedia(constraint, gotStream, handleError);
+};
+connection.clearStream = function () {
+  connection.attachStreams.forEach((stream) => {
+    stream.stop();
+    stream = null;
+  });
+  connection.attachStreams = [];
+}
 connection.sendCustomMessage = function (message) {
   if (!connection.socket) connection.connectSocket();
   console.log(message, connection.socketCustomEvent);
@@ -169,19 +193,16 @@ function handleError(err) {
   console.log(err);
   constraint.audio = false;
   navigator.webkitGetUserMedia(constraint, gotStream, handleError2);
-  return ipc.send('errorInWindow', { code: 401, error: err });
+  return ipc.send('errorInWindow', {code: 401, error: err});
 }
 function handleError2(err) {
   console.log(err);
-  return ipc.send('errorInWindow', { code: 401, error: err });
+  return ipc.send('errorInWindow', {code: 401, error: err});
 }
 function gotStream(stream) {
   console.log(stream);
+  connection.attachStreams = [];
   connection.addStream(stream);
-  request.post('https://lta1a2jg8g.execute-api.us-east-1.amazonaws.com/prod/signals').send(
-    {host: roomid, endpoints: [], server: 'https://cast-sig.myviewboard.com/', connectionData: {gen: argv.pass}}).end(
-    (err, res) => { SignalHandShake(); }
-  );
   const constraints = {
     audio: true, // mandatory.
   };
@@ -198,15 +219,33 @@ function gotStream(stream) {
   navigator.getUserMedia(constraints, successCallback, errorCallback);
 }
 function SignalHandShake() {
+  //console.log(connection.socket.connected);
   connection.checkPresence(roomid, (isOnline, id, info) => {
     if (isOnline) {
       // throw {error: {isOnline: isOnline}};
+    } else {
+      connection.openOrJoin(roomid, argv.pass);
     }
     if (!connection.socket) connection.connectSocket();// .onerror((err)=>console.log(err));
+    let intervalID;
+
     connection.socket.on('disconnect', () => {
-      // document.location.reload();
-      // SignalHandShake();
-      connection.connectSocket();
+      intervalID = setInterval(tryReconnect, 2000);
+    });
+    const tryReconnect = function () {
+      if (connection.socket.connected === false &&
+        connection.socket.connecting === false) {
+        console.log('try reconnect');
+        // use a connect() or reconnect() here if you want
+        connection.connectSocket();
+        connection.reJoin();
+        console.log('connection-open');
+      }
+    };
+    connection.socket.on('connect', () => {
+      if (intervalID) {
+        clearInterval(intervalID);
+      }
     });
     connection.socket.on(connection.socketCustomEvent, (message) => {
       // console.log(message);
@@ -394,7 +433,7 @@ function SignalHandShake() {
         }
       }
     });
-    connection.openOrJoin(roomid, argv.pass);
+    //  connection.openOrJoin(roomid, argv.pass);
     /*   setTimeout(() => {
      connection.becomePublicModerator('viewsonic');
      }, 1000); */
@@ -537,6 +576,14 @@ function peelistHandler(lastlist) {
       }
     }
   });
+  /* if theres no playing peer clear stream and add stream until least one playing*/
+  if ([...peerlist].filter(peer => peer[1].direction === 'out' && peer[1].status === 'play').length === 0) {
+    connection.clearStream();
+  } else {
+    if (connection.attachStreams.length === 0) {
+      connection.setStream();
+    }
+  }
 }
 setInterval(() => {
   peerlist.forEach((item, key) => {
