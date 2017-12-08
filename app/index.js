@@ -17,7 +17,7 @@ const tier = {
   cast_out_queue: -1,
   cast_in_queue: -1
 };
-var winston = require('winston');
+const winston = require('winston');
 require('winston-loggly-bulk');
 winston.add(winston.transports.Loggly, {
   token: '9c45b61e-f16e-449b-8576-8c8493271487',
@@ -29,28 +29,27 @@ const process = require('electron').remote.process;
 const ipc = require('electron').ipcRenderer;
 function startLog(userid = '') {
   window.onerror = function (error, url, line) {
-    console.log(error)
-    winston.log('error', error, {userid: userid});
-    ipc.send('errorInWindow', {code: 0, error: error});
+    console.log(error);
+    winston.log('error', error, {userid});
+    ipc.send('errorInWindow', {code: 0, error});
   };
   process.on('uncaughtException', (error) => {
-    console.log(error)
-    winston.log('exception', error, {userid: userid});
+    console.log(error);
+    winston.log('exception', error, {userid});
   });
   console.log = function () {
     this.apply(console, arguments);
-    winston.log('info', arguments, {userid: userid});
+    winston.log('info', arguments, {userid});
   }.bind(console.log);
   console.info = function () {
     this.apply(console, arguments);
-    winston.log('info', arguments, {userid: userid});
+    winston.log('info', arguments, {userid});
   }.bind(console.info);
   console.log('is log');
 }
-//ipc.send('initWindow', {code: 200, message: 'start'});
 let roomid = 'local';
 console.log(process.argv);
-let processArgs = [];
+const processArgs = [];
 argv.uid = '71ba9a6a-9c7a-48b1-adfd-1fee0e04ee0c';
 argv.pass = generatePassword();
 process.argv.forEach((item) => {
@@ -68,7 +67,7 @@ process.argv.forEach((item) => {
 });
 document.querySelector('#output').innerHTML = process.argv;
 let apiUrl = 'https://devapi.myviewboard.com';
-//argv.environment = 'stage';
+// argv.environment = 'stage';
 switch (argv.environment) {
   case 'dev':
     apiUrl = 'https://devapi.myviewboard.com';
@@ -137,9 +136,9 @@ request.get(`${apiUrl}/api/account/${argv.uid}/role`)
                      maxHeight: 1080
                    }
                  }
-               }
-               //navigator.webkitGetUserMedia({audio: mandatory:{chromeMediaSource: 'desktop'}},function(stream) {},function(err) {})
-               //ipc.send('initWindow', {code: 200, message: JSON.stringify(constraint)});
+               };
+               // navigator.webkitGetUserMedia({audio: mandatory:{chromeMediaSource: 'desktop'}},function(stream) {},function(err) {})
+               // ipc.send('initWindow', {code: 200, message: JSON.stringify(constraint)});
                navigator.webkitGetUserMedia(constraint, gotStream, handleError);
                return;
              }
@@ -148,7 +147,7 @@ request.get(`${apiUrl}/api/account/${argv.uid}/role`)
        });
 connection.onmessage = function (event) {
   console.log('webrtcdata:', event);
-}
+};
 connection.sendCustomMessage = function (message) {
   if (!connection.socket) connection.connectSocket();
   console.log(message, connection.socketCustomEvent);
@@ -170,17 +169,17 @@ function handleError(err) {
   console.log(err);
   constraint.audio = false;
   navigator.webkitGetUserMedia(constraint, gotStream, handleError2);
-  return ipc.send('errorInWindow', {code: 401, error: err});
+  return ipc.send('errorInWindow', { code: 401, error: err });
 }
-function handleError2() {
+function handleError2(err) {
   console.log(err);
-  return ipc.send('errorInWindow', {code: 401, error: err});
+  return ipc.send('errorInWindow', { code: 401, error: err });
 }
 function gotStream(stream) {
   console.log(stream);
   connection.addStream(stream);
   request.post('https://lta1a2jg8g.execute-api.us-east-1.amazonaws.com/prod/signals').send(
-    {host: roomid, endpoints: [], server: 'https://cast-sig.myviewboard.com/', connectionData: {gen:argv.pass}}).end(
+    {host: roomid, endpoints: [], server: 'https://cast-sig.myviewboard.com/', connectionData: {gen: argv.pass}}).end(
     (err, res) => { SignalHandShake(); }
   );
   const constraints = {
@@ -191,7 +190,7 @@ function gotStream(stream) {
   };
   const successCallback = function (stream) {
     console.log(stream.getAudioTracks());
-    stream.getAudioTracks().forEach(function (item) {
+    stream.getAudioTracks().forEach((item) => {
       connection.attachStreams[0].addTrack(item);
       console.log('audio added', item);
     });
@@ -201,15 +200,19 @@ function gotStream(stream) {
 function SignalHandShake() {
   connection.checkPresence(roomid, (isOnline, id, info) => {
     if (isOnline) {
-      //throw {error: {isOnline: isOnline}};
+      // throw {error: {isOnline: isOnline}};
     }
-    if (!connection.socket) connection.connectSocket()//.onerror((err)=>console.log(err));
+    if (!connection.socket) connection.connectSocket();// .onerror((err)=>console.log(err));
+    connection.socket.on('disconnect', () => {
+      // document.location.reload();
+      // SignalHandShake();
+      connection.connectSocket();
+    });
     connection.socket.on(connection.socketCustomEvent, (message) => {
-
       // console.log(message);
       const login = message.guestInfo.name ? 'true' : 'false' || 'false';
       if (login === 'false') {
-        //console.log(message)
+        // console.log(message)
       }
       //   console.log(message.guestInfo, login);
       if (message.messageFor === roomid) {
@@ -220,15 +223,15 @@ function SignalHandShake() {
           console.log(message);
         }
         if (message.action && message.action === 'getList') {
-          console.log(message)
+          console.log(message);
           socketEmitter.emit('update');
         }
         if (message.action && message.action === 'setList') {
           console.log(new Map(JSON.parse(message.desear)));
-          let lastlist = new Map(peerlist);
+          const lastlist = new Map(peerlist);
           new Map(JSON.parse(message.desear)).forEach((item, key) => {
             peerlist.set(key, item);
-          })
+          });
           console.log(peerlist);
           peelistHandler(lastlist);
         }
@@ -263,10 +266,9 @@ function SignalHandShake() {
               return false;
             }
           } else {
-
             // -----------------------------------------------------------------------------------------------//USER CASTIN START
             if (message.action === 'start') {
-              console.log(message)
+              console.log(message);
               const n_in = [...peerlist].filter((arr) => arr[1].direction === 'in').length;
               console.log(n_in);
               if (n_in === tier.cast_in_queue) {
@@ -286,7 +288,7 @@ function SignalHandShake() {
                 peerlist.set(message.guestId, {
                   status: message.action,
                   approved: 'false',
-                  login: login,
+                  login,
                   direction: 'in',
                   url: message.url,
                   info: message.guestInfo
@@ -345,7 +347,7 @@ function SignalHandShake() {
           peerlist.set(message.guestId, {
             status: 'join',
             approved: 'false',
-            login: login,
+            login,
             direction: 'out',
             info: message.guestInfo
           });
@@ -397,8 +399,8 @@ function SignalHandShake() {
      connection.becomePublicModerator('viewsonic');
      }, 1000); */
   });
-  //ipc.send('initWindow', {code: 200, message: 'tcpstart'});
-  console.log('ipc:200')
+  // ipc.send('initWindow', {code: 200, message: 'tcpstart'});
+  console.log('ipc:200');
   ipc.send('initWindow', {code: 200, error: null});
 }
 tcp_start();
@@ -420,7 +422,7 @@ function tcp_start() {
     // Put this new client in the list
     clients.push(socket);
     window.clients = clients;
-    //writeSocket(socket);
+    // writeSocket(socket);
     socketEmitter.emit('update');
     // Remove the client from the list when it leaves
     socket.on('end', () => {
@@ -428,7 +430,7 @@ function tcp_start() {
     });
   }).listen(25552);
 }
-socketEmitter.on('update', function (data) {
+socketEmitter.on('update', (data) => {
   clients.forEach((socket) => {
     writeSocket(socket);
   });
@@ -438,7 +440,7 @@ socketEmitter.on('update', function (data) {
                                  hostId: roomid,
                                  guestInfo: JSON.stringify([...peerlist])
                                });
-})
+});
 function writeSocket(socket) {
   console.log(peerlist);
   const obj = [];
@@ -468,7 +470,7 @@ function addAudio() {
   };
   const successCallback = function (stream) {
     console.log(stream.getAudioTracks());
-    stream.getAudioTracks().forEach(function (item) {
+    stream.getAudioTracks().forEach((item) => {
       connection.attachStreams[0].addTrack(item);
       console.log('audio added', item);
     });
@@ -487,7 +489,7 @@ function tcpInHandler(data, socket) {
     // socket.write(JSON.stringify([...peerlist]));
     writeSocket(socket);
   } else {
-    let lastlist = new Map(peerlist);
+    const lastlist = new Map(peerlist);
     const dataobj = JSON.parse(data.toString().trim());
     dataobj.forEach((item, key) => {
       const user = `${item.user}^${item.id}`;
@@ -548,6 +550,6 @@ setInterval(() => {
 }, 2000);
 connection.onUserStatusChanged = function (event) {
   console.log('statuschange', event);
-  //winston.log('info', event, {userid: userid});
-}
+  // winston.log('info', event, {userid: userid});
+};
 

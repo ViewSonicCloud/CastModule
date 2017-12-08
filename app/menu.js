@@ -28,7 +28,7 @@ export default class MenuBuilder {
   }
 
   setupDevelopmentEnvironment() {
-    if (process.env.NODE_ENV === 'development' ) {
+    if (process.env.NODE_ENV === 'development') {
       this.mainWindow.openDevTools();
     }
 

@@ -10,31 +10,33 @@
  *
  * @flow
  */
-import {app, BrowserWindow} from 'electron';
+import { app, BrowserWindow } from 'electron';
 import Rx from 'rxjs/Rx';
 import MenuBuilder from './menu';
+
 const net = require('net');
-var ipc = require('electron').ipcMain;
+const ipc = require('electron').ipcMain;
+
 const log_clients = [];
-var socketqueue = [];
-ipc.on('initWindow', function (event, data) {
+const socketqueue = [];
+ipc.on('initWindow', (event, data) => {
   console.log(JSON.stringify(data));
   log_clients.forEach((log_client) => {
-    log_client.write(JSON.stringify(data) + '\n\n');
+    log_client.write(`${JSON.stringify(data)}\n\n`);
   });
 });
-ipc.on('errorInWindow', function (event, data) {
+ipc.on('errorInWindow', (event, data) => {
   console.log(event, data);
   console.log(JSON.stringify(data));
-  let logMsg = ''
+  let logMsg = '';
   /*  logMsg += "LogStart"
    logMsg += '\n*************************************\n'
-   logMsg += '\n-----------------------------------------------------\n';*/
+   logMsg += '\n-----------------------------------------------------\n'; */
   /* logMsg += '\n' + 'LogTime=' + new Date() + '\n';
-   logMsg += '\n-----------------------------------------------------\n';*/
-  logMsg += JSON.stringify(data) + '\n\n';
+   logMsg += '\n-----------------------------------------------------\n'; */
+  logMsg += `${JSON.stringify(data)}\n\n`;
   /*  logMsg += '\n*************************************\n';
-   logMsg += "LogEnd"*/
+   logMsg += "LogEnd" */
   log_clients.forEach((log_client) => {
     log_client.write(logMsg);
   });
@@ -50,7 +52,7 @@ if (process.env.NODE_ENV === 'development' || process.env.DEBUG_PROD === 'true')
   const p = path.join(__dirname, '..', 'app', 'node_modules');
   require('module').globalPaths.push(p);
 }
-/*const installExtensions = async () => {
+/* const installExtensions = async () => {
  const installer = require('electron-devtools-installer');
  const forceDownload = !!process.env.UPGRADE_EXTENSIONS;
  const extensions = [
@@ -60,7 +62,7 @@ if (process.env.NODE_ENV === 'development' || process.env.DEBUG_PROD === 'true')
  return Promise
  .all(extensions.map(name => installer.default(installer[name], forceDownload)))
  .catch(console.log);
- };*/
+ }; */
 /**
  * Add event listeners...
  */
@@ -75,35 +77,35 @@ app.on('window-all-closed', () => {
 app.on('ready', async () => {
   if (process.env.NODE_ENV === 'development') {
     mainWindow = new BrowserWindow({
-                                     show: false,
-                                     width: 1024,
-                                     height: 728
-                                   });
+      show: false,
+      width: 1024,
+      height: 728
+    });
     mainWindow.openDevTools();
   } else {
     mainWindow = new BrowserWindow({
-                                     show: false,
-                                     width: 1024,
-                                     height: 728
-                                   });
+      show: false,
+      width: 1024,
+      height: 728
+    });
   }
   const log_tcp = net.createServer((socket) => {
     socket.name = `${socket.remoteAddress}:${socket.remotePort}`;
     socket.setNoDelay();
     socket.on('data', (data) => {
-                console.log(socket.remoteAddress)
-                console.log(data.toString());
-                if (socket.remoteAddress !== '::ffff:127.0.0.1') {
+      console.log(socket.remoteAddress);
+      console.log(data.toString());
+      if (socket.remoteAddress !== '::ffff:127.0.0.1') {
                   // return;
-                }
-                console.log(data.toString());
-                if (data && data.toString() === "start") {
-                  mainWindow.loadURL(`file://${__dirname}/app.html`);
-                }
-                if (data && data.toString() === 'debug') {
-                  mainWindow.openDevTools();
-                }
-              }
+      }
+      console.log(data.toString());
+      if (data && data.toString() === 'start') {
+        mainWindow.loadURL(`file://${__dirname}/app.html`);
+      }
+      if (data && data.toString() === 'debug') {
+        mainWindow.openDevTools();
+      }
+    }
     );
     if (socket.remoteAddress !== '::ffff:127.0.0.1') {
       // return;
@@ -120,36 +122,37 @@ app.on('ready', async () => {
     if (!mainWindow) {
       throw new Error('"mainWindow" is not defined');
     }
-    //mainWindow.show();
-    //mainWindow.focus();
+    // mainWindow.show();
+    // mainWindow.focus();
     windowInit();
   });
   mainWindow.on('closed', () => {
     mainWindow = null;
   });
-  //const menuBuilder = new MenuBuilder(mainWindow);
-  //menuBuilder.buildMenu();
+  // const menuBuilder = new MenuBuilder(mainWindow);
+  // menuBuilder.buildMenu();
 });
-function windowInit() {};
-var exec = require('child_process').exec;
-var cmd = exec('tasklist |find /i "vBoard.exe" ');
-var ipcs = [];
+function windowInit() {}
+const exec = require('child_process').exec;
+
+let cmd = exec('tasklist |find /i "vBoard.exe" ');
+const ipcs = [];
 Rx.Observable.interval(5000).subscribe({
-                                         next: (value) => {
-                                           var isvblive = '';
-                                           cmd = exec('tasklist |find /i "vBoard.exe" ');
-                                           cmd.stdout.on('data', function (data) {
-                                             isvblive += data;
-                                           });
-                                           cmd.on('exit', function (code) {
-                                             if (isvblive.indexOf('vBoard.exe') === -1) {
-                                               if (process.env.NODE_ENV !== 'development') {
+  next: (value) => {
+    let isvblive = '';
+    cmd = exec('tasklist |find /i "vBoard.exe" ');
+    cmd.stdout.on('data', (data) => {
+      isvblive += data;
+    });
+    cmd.on('exit', (code) => {
+      if (isvblive.indexOf('vBoard.exe') === -1) {
+        if (process.env.NODE_ENV !== 'development') {
                                                  // app.quit();
-                                               }
-                                             }
-                                           });
-                                         },
-                                       });
+        }
+      }
+    });
+  },
+});
 /*
  function writeSocket(socket,data) {
  return new Promise((resolve,err)=>{
