@@ -66,17 +66,26 @@ process.argv.forEach((item) => {
   }
 });
 document.querySelector('#output').innerHTML = process.argv;
-let apiUrl = 'https://devapi.myviewboard.com';
 // argv.environment = 'stage';
+var apiUrl = 'https://stageapi.myviewboard.com';
+var signalUrl = 'https://fj07wodyp2.execute-api.us-east-1.amazonaws.com/stage/signals/';
 switch (argv.environment) {
   case 'dev':
     apiUrl = 'https://devapi.myviewboard.com';
+    signalUrl = 'https://fj07wodyp2.execute-api.us-east-1.amazonaws.com/stage/signals/';
+    connection.socketURL = 'https://sig-stage.myviewboard.com/';
     break;
   case 'stage':
     apiUrl = 'https://stageapi.myviewboard.com';
+    signalUrl = 'https://fj07wodyp2.execute-api.us-east-1.amazonaws.com/stage/signals/';
+    connection.socketURL = 'https://sig-stage.myviewboard.com/';
     break;
   case 'prod':
     apiUrl = 'https://ssi.myviewboard.com';
+    signalUrl = 'https://lta1a2jg8g.execute-api.us-east-1.amazonaws.com/prod/signals/';
+    connection.socketURL = 'https://cast-sig.myviewboard.com/';
+    break;
+  default:
     break;
 }
 const apiKey = ''; // aes256.encrypt(Date(),argv.uid);
@@ -114,14 +123,19 @@ request.get(`${apiUrl}/api/account/${argv.uid}/role`)
                break;
            }
          });
-         request.post('https://lta1a2jg8g.execute-api.us-east-1.amazonaws.com/prod/signals').send(
+         request.post(signalUrl).send(
            {
              host: roomid,
              endpoints: [],
-             server: 'https://cast-sig.myviewboard.com/',
+             server: connection.socketURL,//'https://cast-sig.myviewboard.com/',
              connectionData: {gen: argv.pass}
            }).end(
-           (err, res) => { SignalHandShake(); }
+           (err, res) => {
+             if (err) {
+               return winston.log('exception', err, {userid});
+             }
+             SignalHandShake();
+           }
          );
          desktopCapturer.getSources({types: ['window', 'screen']}, (error, sources) => {
            if (error) throw error;
@@ -227,26 +241,6 @@ function SignalHandShake() {
       connection.openOrJoin(roomid, argv.pass);
     }
     if (!connection.socket) connection.connectSocket();// .onerror((err)=>console.log(err));
-    let intervalID;
-
-    connection.socket.on('disconnect', () => {
-      intervalID = setInterval(tryReconnect, 2000);
-    });
-    const tryReconnect = function () {
-      if (connection.socket.connected === false &&
-        connection.socket.connecting === false) {
-        console.log('try reconnect');
-        // use a connect() or reconnect() here if you want
-        connection.connectSocket();
-        connection.reJoin();
-        console.log('connection-open');
-      }
-    };
-    connection.socket.on('connect', () => {
-      if (intervalID) {
-        clearInterval(intervalID);
-      }
-    });
     connection.socket.on(connection.socketCustomEvent, (message) => {
       // console.log(message);
       const login = message.guestInfo.name ? 'true' : 'false' || 'false';
@@ -257,6 +251,14 @@ function SignalHandShake() {
       if (message.messageFor === roomid) {
         hb.set(message.guestId, 5);
         if (message.action === 'dropped') {
+        }
+        if (message.action && message.action === 'remote') {
+          //  connection.hasRmote = true;
+          //  connection.setStream();
+          console.log('start stream?', connection.attachStreams.length === 0)
+          if (connection.attachStreams.length === 0) {
+            connection.setStream();
+          }
         }
         if (message.action && message.action === 'control') {
           console.log(message);
@@ -577,12 +579,17 @@ function peelistHandler(lastlist) {
     }
   });
   /* if theres no playing peer clear stream and add stream until least one playing*/
-  if ([...peerlist].filter(peer => peer[1].direction === 'out' && peer[1].status === 'play').length === 0) {
-    connection.clearStream();
+  /*  if ([...peerlist].filter(peer => peer[1].direction === 'out' && peer[1].status === 'play').length === 0 && !connection.hasRmote) {
+   connection.clearStream();
+   } else {
+   if (connection.attachStreams.length === 0) {
+   connection.setStream();
+   }
+   }*/
+  if (connection.peers.getAllParticipants().length > 0 && connection.attachStreams === 0) {
+    connection.setStream();
   } else {
-    if (connection.attachStreams.length === 0) {
-      connection.setStream();
-    }
+    connection.clearStream();
   }
 }
 setInterval(() => {
@@ -597,6 +604,9 @@ setInterval(() => {
 }, 2000);
 connection.onUserStatusChanged = function (event) {
   console.log('statuschange', event);
+  if (event.status === 'offline' && connection.peers.getAllParticipants().length === 0) {
+    connection.clearStream();
+  }
   // winston.log('info', event, {userid: userid});
 };
 
