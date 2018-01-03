@@ -134,6 +134,7 @@ request.get(`${apiUrl}/api/account/${argv.uid}/role`)
              if (err) {
                return winston.log('exception', err, {userid});
              }
+             connection.socketURL = res.body.server;
              SignalHandShake();
            }
          );
@@ -579,18 +580,21 @@ function peelistHandler(lastlist) {
     }
   });
   /* if theres no playing peer clear stream and add stream until least one playing*/
-  /*  if ([...peerlist].filter(peer => peer[1].direction === 'out' && peer[1].status === 'play').length === 0 && !connection.hasRmote) {
+    if ([...peerlist].filter(peer => peer[1].direction === 'out' && peer[1].status === 'play').length === 0) {
    connection.clearStream();
    } else {
    if (connection.attachStreams.length === 0) {
    connection.setStream();
    }
-   }*/
+   }
   if (connection.peers.getAllParticipants().length > 0 && connection.attachStreams === 0) {
     connection.setStream();
   } else {
     connection.clearStream();
   }
+  /* if([...peerlist].filter(peer => peer[1].direction === 'out' && peer[1].status === 'play').length === 0 ){
+   connection.setStream();
+   }*/
 }
 setInterval(() => {
   peerlist.forEach((item, key) => {
@@ -603,10 +607,14 @@ setInterval(() => {
   });
 }, 2000);
 connection.onUserStatusChanged = function (event) {
-  console.log('statuschange', event);
+ /* console.log('statuschange', event);
   if (event.status === 'offline' && connection.peers.getAllParticipants().length === 0) {
     connection.clearStream();
   }
+  console.log(connection.peers.getAllParticipants().length, connection.attachStreams)
+  if (event.status === 'online' && connection.peers.getAllParticipants().length > 0 && connection.attachStreams.length === 0) {
+    connection.setStream();
+  }*/
   // winston.log('info', event, {userid: userid});
 };
 
