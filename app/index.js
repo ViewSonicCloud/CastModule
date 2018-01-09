@@ -9,7 +9,7 @@ const request = superagent;
 const net = require('net');
 const socketEmitter = require('./utils/SocketEmitter');
 const clients = [];
-const argv = {uid: '', environment: 'stage'};
+const argv = {uid: '', environment: 'dev'};
 const hb = new Map();
 const tier = {
   cast_out_limit: -1,
@@ -19,14 +19,32 @@ const tier = {
 };
 const winston = require('winston');
 require('winston-loggly-bulk');
+const process = require('electron').remote.process;
+const ipc = require('electron').ipcRenderer;
+let roomid = 'local';
+console.log(process.argv);
+const processArgs = [];
+argv.uid = '71ba9a6a-9c7a-48b1-adfd-1fee0e04ee0c';
+argv.pass = generatePassword();
+process.argv.forEach((item) => {
+  console.log(item);
+  if (item.indexOf('--userid=') !== -1) {
+    argv.uid = item.slice(item.indexOf('=') + 1, item.length);
+  } else {
+    // ipc.send('errorInWindow', {code: 103, error: 'process userId is not defined'});
+  }
+  if (item.indexOf('--env=') !== -1) {
+    argv.environment = item.slice(item.indexOf('=') + 1, item.length);
+  } else {
+    //  ipc.send('errorInWindow', {code: 103, error: 'process stage  is not defined'});
+  }
+});
 winston.add(winston.transports.Loggly, {
   token: '9c45b61e-f16e-449b-8576-8c8493271487',
   subdomain: 'vsssicloud',
-  tags: ['Cast-Module'],
+  tags: ['Cast-Module' + argv.environment],
   json: true
 });
-const process = require('electron').remote.process;
-const ipc = require('electron').ipcRenderer;
 function startLog(userid = '') {
   window.onerror = function (error, url, line) {
     console.log(error);
@@ -47,24 +65,6 @@ function startLog(userid = '') {
   }.bind(console.info);
   console.log('is log');
 }
-let roomid = 'local';
-console.log(process.argv);
-const processArgs = [];
-argv.uid = '71ba9a6a-9c7a-48b1-adfd-1fee0e04ee0c';
-argv.pass = generatePassword();
-process.argv.forEach((item) => {
-  console.log(item);
-  if (item.indexOf('--userid=') !== -1) {
-    argv.uid = item.slice(item.indexOf('=') + 1, item.length);
-  } else {
-    // ipc.send('errorInWindow', {code: 103, error: 'process userId is not defined'});
-  }
-  if (item.indexOf('--env=') !== -1) {
-    argv.environment = item.slice(item.indexOf('=') + 1, item.length);
-  } else {
-    //  ipc.send('errorInWindow', {code: 103, error: 'process stage  is not defined'});
-  }
-});
 document.querySelector('#output').innerHTML = process.argv;
 // argv.environment = 'stage';
 var apiUrl = 'https://stageapi.myviewboard.com';
@@ -580,13 +580,13 @@ function peelistHandler(lastlist) {
     }
   });
   /* if theres no playing peer clear stream and add stream until least one playing*/
-    if ([...peerlist].filter(peer => peer[1].direction === 'out' && peer[1].status === 'play').length === 0) {
-   connection.clearStream();
-   } else {
-   if (connection.attachStreams.length === 0) {
-   connection.setStream();
-   }
-   }
+  if ([...peerlist].filter(peer => peer[1].direction === 'out' && peer[1].status === 'play').length === 0) {
+    connection.clearStream();
+  } else {
+    if (connection.attachStreams.length === 0) {
+      connection.setStream();
+    }
+  }
   if (connection.peers.getAllParticipants().length > 0 && connection.attachStreams === 0) {
     connection.setStream();
   } else {
@@ -607,14 +607,14 @@ setInterval(() => {
   });
 }, 2000);
 connection.onUserStatusChanged = function (event) {
- /* console.log('statuschange', event);
-  if (event.status === 'offline' && connection.peers.getAllParticipants().length === 0) {
-    connection.clearStream();
-  }
-  console.log(connection.peers.getAllParticipants().length, connection.attachStreams)
-  if (event.status === 'online' && connection.peers.getAllParticipants().length > 0 && connection.attachStreams.length === 0) {
-    connection.setStream();
-  }*/
+  /* console.log('statuschange', event);
+   if (event.status === 'offline' && connection.peers.getAllParticipants().length === 0) {
+   connection.clearStream();
+   }
+   console.log(connection.peers.getAllParticipants().length, connection.attachStreams)
+   if (event.status === 'online' && connection.peers.getAllParticipants().length > 0 && connection.attachStreams.length === 0) {
+   connection.setStream();
+   }*/
   // winston.log('info', event, {userid: userid});
 };
 
