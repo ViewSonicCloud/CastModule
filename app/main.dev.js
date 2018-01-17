@@ -10,7 +10,7 @@
  *
  * @flow
  */
-import { app, BrowserWindow } from 'electron';
+import {app, BrowserWindow} from 'electron';
 import Rx from 'rxjs/Rx';
 import MenuBuilder from './menu';
 
@@ -77,7 +77,7 @@ app.on('window-all-closed', () => {
 app.on('ready', async () => {
   if (process.env.NODE_ENV === 'development') {
     mainWindow = new BrowserWindow({
-      show: false,
+      show: true,
       width: 1024,
       height: 728
     });
@@ -93,19 +93,19 @@ app.on('ready', async () => {
     socket.name = `${socket.remoteAddress}:${socket.remotePort}`;
     socket.setNoDelay();
     socket.on('data', (data) => {
-      console.log(socket.remoteAddress);
-      console.log(data.toString());
-      if (socket.remoteAddress !== '::ffff:127.0.0.1') {
-                  // return;
+        console.log(socket.remoteAddress);
+        console.log(data.toString());
+        if (socket.remoteAddress !== '::ffff:127.0.0.1') {
+          // return;
+        }
+        console.log(data.toString());
+        if (data && data.toString() === 'start') {
+          mainWindow.loadURL(`file://${__dirname}/app.html`);
+        }
+        if (data && data.toString() === 'debug') {
+          mainWindow.openDevTools();
+        }
       }
-      console.log(data.toString());
-      if (data && data.toString() === 'start') {
-        mainWindow.loadURL(`file://${__dirname}/app.html`);
-      }
-      if (data && data.toString() === 'debug') {
-        mainWindow.openDevTools();
-      }
-    }
     );
     if (socket.remoteAddress !== '::ffff:127.0.0.1') {
       // return;
@@ -132,7 +132,10 @@ app.on('ready', async () => {
   // const menuBuilder = new MenuBuilder(mainWindow);
   // menuBuilder.buildMenu();
 });
-function windowInit() {}
+
+function windowInit() {
+}
+
 const exec = require('child_process').exec;
 
 let cmd = exec('tasklist |find /i "vBoard.exe" ');
@@ -147,7 +150,7 @@ Rx.Observable.interval(5000).subscribe({
     cmd.on('exit', (code) => {
       if (isvblive.indexOf('vBoard.exe') === -1) {
         if (process.env.NODE_ENV !== 'development') {
-                                                 // app.quit();
+          app.quit();
         }
       }
     });

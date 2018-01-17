@@ -2,6 +2,7 @@ import Rx from 'rxjs/Rx';
 import {remote, desktopCapturer} from 'electron';
 import connection from './utils/connection';
 import peerlist from './utils/peerlist';
+
 window.Observable = Rx.Observable;
 const generatePassword = require('password-generator');
 const Observable = Rx.Observable;
@@ -9,7 +10,7 @@ const request = superagent;
 const net = require('net');
 const socketEmitter = require('./utils/SocketEmitter');
 const clients = [];
-const argv = {uid: '', environment: 'dev'};
+const argv = {uid: '', environment: 'stage'};
 const hb = new Map();
 const tier = {
   cast_out_limit: -1,
@@ -45,6 +46,7 @@ winston.add(winston.transports.Loggly, {
   tags: ['Cast-Module' + argv.environment],
   json: true
 });
+
 function startLog(userid = '') {
   window.onerror = function (error, url, line) {
     console.log(error);
@@ -65,6 +67,7 @@ function startLog(userid = '') {
   }.bind(console.info);
   console.log('is log');
 }
+
 document.querySelector('#output').innerHTML = process.argv;
 // argv.environment = 'stage';
 var apiUrl = 'https://stageapi.myviewboard.com';
@@ -90,85 +93,85 @@ switch (argv.environment) {
 }
 const apiKey = ''; // aes256.encrypt(Date(),argv.uid);
 request.get(`${apiUrl}/api/account/${argv.uid}/role`)
-       .set('X-API-Key', apiKey)
-       .set('Accept', 'application/json')
-       .end((err, res) => {
-         if (err) {
-           return ipc.send('errorInWindow', {code: 503, error: err});
-         }
-         connection.extra = {
-           id: res.body.id,
-           name: res.body.name,
-           email: res.body.email
-         };
-         roomid = res.body.name.split(' ').join('_').toLowerCase();
-         startLog(roomid);
-         connection.userid = roomid;
-         connection.socketCustomEvent = roomid;
-         console.log(res.body.permission.name);
-         res.body.permission.sub_permission.forEach((item) => {
-           console.log(item);
-           switch (item.name) {
-             case 'Cast Out':
-               tier.cast_out_limit = item.value;
-               break;
-             case 'Cast In':
-               tier.cast_in_limit = item.value;
-               break;
-             case 'Cast Out Queue':
-               tier.cast_out_queue = item.value;
-               break;
-             case 'Cast In Queue':
-               tier.cast_in_queue = item.value;
-               break;
-           }
-         });
-         request.post(signalUrl).send(
-           {
-             host: roomid,
-             endpoints: [],
-             server: connection.socketURL,//'https://cast-sig.myviewboard.com/',
-             connectionData: {gen: argv.pass}
-           }).end(
-           (err, res) => {
-             if (err) {
-               return winston.log('exception', err, {userid});
-             }
-             connection.socketURL = res.body.server;
-             SignalHandShake();
-           }
-         );
-         desktopCapturer.getSources({types: ['window', 'screen']}, (error, sources) => {
-           if (error) throw error;
-           console.log(connection.DetectRTC.audioOutputDevices.length > 0);
-           console.log('screensource', sources);
-           for (let i = 0; i < sources.length; i++) {
-             if (sources[i].id === 'screen:0:0') {
-               constraint = {
-                 audio: connection.DetectRTC.audioOutputDevices.length > 0 ? {
-                   mandatory: {
-                     chromeMediaSource: 'desktop',
-                   }
-                 } : false,
-                 video: {
-                   mandatory: {
-                     chromeMediaSource: 'desktop',
-                     chromeMediaSourceId: sources[i].id,
-                     minWidth: 1280,
-                     maxWidth: 1920,
-                     minHeight: 720,
-                     maxHeight: 1080
-                   }
-                 }
-               };
-               // navigator.webkitGetUserMedia({audio: mandatory:{chromeMediaSource: 'desktop'}},function(stream) {},function(err) {})
-               // ipc.send('initWindow', {code: 200, message: JSON.stringify(constraint)});
-               // navigator.webkitGetUserMedia(constraint, gotStream, handleError);
-               return;
-             }
-           }
-         });
-       });
+  .set('X-API-Key', apiKey)
+  .set('Accept', 'application/json')
+  .end((err, res) => {
+    if (err) {
+      return ipc.send('errorInWindow', {code: 503, error: err});
+    }
+    connection.extra = {
+      id: res.body.id,
+      name: res.body.name,
+      email: res.body.email
+    };
+    roomid = res.body.name.split(' ').join('_').toLowerCase();
+    startLog(roomid);
+    connection.userid = roomid;
+    connection.socketCustomEvent = roomid;
+    console.log(res.body.permission.name);
+    res.body.permission.sub_permission.forEach((item) => {
+      console.log(item);
+      switch (item.name) {
+        case 'Cast Out':
+          tier.cast_out_limit = item.value;
+          break;
+        case 'Cast In':
+          tier.cast_in_limit = item.value;
+          break;
+        case 'Cast Out Queue':
+          tier.cast_out_queue = item.value;
+          break;
+        case 'Cast In Queue':
+          tier.cast_in_queue = item.value;
+          break;
+      }
+    });
+    request.post(signalUrl).send(
+      {
+        host: roomid,
+        endpoints: [],
+        server: connection.socketURL,//'https://cast-sig.myviewboard.com/',
+        connectionData: {gen: argv.pass}
+      }).end(
+      (err, res) => {
+        if (err) {
+          return winston.log('exception', err, {userid});
+        }
+        connection.socketURL = res.body.server;
+        SignalHandShake();
+      }
+    );
+    desktopCapturer.getSources({types: ['window', 'screen']}, (error, sources) => {
+      if (error) throw error;
+      console.log(connection.DetectRTC.audioOutputDevices.length > 0);
+      console.log('screensource', sources);
+      for (let i = 0; i < sources.length; i++) {
+        if (sources[i].id === 'screen:0:0') {
+          constraint = {
+            audio: connection.DetectRTC.audioOutputDevices.length > 0 ? {
+              mandatory: {
+                chromeMediaSource: 'desktop',
+              }
+            } : false,
+            video: {
+              mandatory: {
+                chromeMediaSource: 'desktop',
+                chromeMediaSourceId: sources[i].id,
+                minWidth: 1280,
+                maxWidth: 1920,
+                minHeight: 720,
+                maxHeight: 1080
+              }
+            }
+          };
+          // navigator.webkitGetUserMedia({audio: mandatory:{chromeMediaSource: 'desktop'}},function(stream) {},function(err) {})
+          // ipc.send('initWindow', {code: 200, message: JSON.stringify(constraint)});
+          // navigator.webkitGetUserMedia(constraint, gotStream, handleError);
+          return;
+        }
+      }
+    });
+  });
 connection.onmessage = function (event) {
   console.log('webrtcdata:', event);
 };
@@ -204,16 +207,19 @@ request.get('https://wt0q02pbsc.execute-api.us-east-1.amazonaws.com/prod/getices
   });
 });
 let constraint = {};
+
 function handleError(err) {
   console.log(err);
   constraint.audio = false;
   navigator.webkitGetUserMedia(constraint, gotStream, handleError2);
   return ipc.send('errorInWindow', {code: 401, error: err});
 }
+
 function handleError2(err) {
   console.log(err);
   return ipc.send('errorInWindow', {code: 401, error: err});
 }
+
 function gotStream(stream) {
   console.log(stream);
   connection.attachStreams = [];
@@ -227,12 +233,16 @@ function gotStream(stream) {
   const successCallback = function (stream) {
     console.log(stream.getAudioTracks());
     stream.getAudioTracks().forEach((item) => {
-      connection.attachStreams[0].addTrack(item);
-      console.log('audio added', item);
+      connection.attachStreams.forEach(_stream => {
+        _stream.addTrack(item);
+        console.log('audio added', item);
+      });
+      //connection.attachStreams[0].addTrack(item)
     });
   };
   navigator.getUserMedia(constraints, successCallback, errorCallback);
 }
+
 function SignalHandShake() {
   //console.log(connection.socket.connected);
   connection.checkPresence(roomid, (isOnline, id, info) => {
@@ -283,11 +293,11 @@ function SignalHandShake() {
               peerlist.forEach((item) => {
                 if (item.sid === message.guestInfo.sid && item.direction === 'in') {
                   connection.sendCustomMessage({
-                                                 messageFor: message.guestId,
-                                                 action: 'reject',
-                                                 hostId: roomid,
-                                                 guestInfo: connection.extra,
-                                               });
+                    messageFor: message.guestId,
+                    action: 'reject',
+                    hostId: roomid,
+                    guestInfo: connection.extra,
+                  });
                   peerlist.delete(message.guestId);
                   socketEmitter.emit('update');
                 }
@@ -296,11 +306,11 @@ function SignalHandShake() {
             const n_in = [...peerlist].filter((arr) => arr[1].direction === 'in').length;
             if (n_in === tier.cast_in_queue) {
               connection.sendCustomMessage({
-                                             messageFor: message.guestId,
-                                             action: 'exceed',
-                                             hostId: roomid,
-                                             guestInfo: connection.extra,
-                                           });
+                messageFor: message.guestId,
+                action: 'exceed',
+                hostId: roomid,
+                guestInfo: connection.extra,
+              });
               if (peerlist.get(message.guestId)) {
                 peerlist.delete(message.guestId);
               }
@@ -315,11 +325,11 @@ function SignalHandShake() {
               console.log(n_in);
               if (n_in === tier.cast_in_queue) {
                 connection.sendCustomMessage({
-                                               messageFor: message.guestId,
-                                               action: 'exceed',
-                                               hostId: roomid,
-                                               guestInfo: connection.extra,
-                                             });
+                  messageFor: message.guestId,
+                  action: 'exceed',
+                  hostId: roomid,
+                  guestInfo: connection.extra,
+                });
                 if (peerlist.get(message.guestId)) {
                   peerlist.delete(message.guestId);
                 }
@@ -341,10 +351,10 @@ function SignalHandShake() {
                 }
                 console.log(peerlist);
                 connection.sendCustomMessage({
-                                               messageFor: message.guestId,
-                                               action: 'startok',
-                                               hostId: roomid,
-                                             });
+                  messageFor: message.guestId,
+                  action: 'startok',
+                  hostId: roomid,
+                });
                 if (!connection.socket) connection.connectSocket();
                 connection.socket.emit(message.guestId, 'startok');
                 console.log('startok');
@@ -360,11 +370,11 @@ function SignalHandShake() {
             peerlist.forEach((item) => {
               if (item.sid === message.guestInfo.sid && item.direction === 'out') {
                 connection.sendCustomMessage({
-                                               messageFor: message.guestId,
-                                               action: 'reject',
-                                               hostId: roomid,
-                                               guestInfo: connection.extra,
-                                             });
+                  messageFor: message.guestId,
+                  action: 'reject',
+                  hostId: roomid,
+                  guestInfo: connection.extra,
+                });
                 if (peerlist.get(message.guestId)) {
                   peerlist.delete(message.guestId);
                 }
@@ -375,11 +385,11 @@ function SignalHandShake() {
           console.log(n_out);
           if (n_out === tier.cast_out_queue) {
             connection.sendCustomMessage({
-                                           messageFor: message.guestId,
-                                           action: 'exceed',
-                                           hostId: roomid,
-                                           guestInfo: connection.extra,
-                                         });
+              messageFor: message.guestId,
+              action: 'exceed',
+              hostId: roomid,
+              guestInfo: connection.extra,
+            });
             if (peerlist.get(message.guestId)) {
               peerlist.delete(message.guestId);
             }
@@ -445,7 +455,9 @@ function SignalHandShake() {
   console.log('ipc:200');
   ipc.send('initWindow', {code: 200, error: null});
 }
+
 tcp_start();
+
 function tcp_start() {
   const tcp = net.createServer((socket) => {
     socket.setNoDelay();
@@ -472,17 +484,19 @@ function tcp_start() {
     });
   }).listen(25552);
 }
+
 socketEmitter.on('update', (data) => {
   clients.forEach((socket) => {
     writeSocket(socket);
   });
   connection.sendCustomMessage({
-                                 messageFor: connection.socketCustomEvent,
-                                 action: 'control',
-                                 hostId: roomid,
-                                 guestInfo: JSON.stringify([...peerlist])
-                               });
+    messageFor: connection.socketCustomEvent,
+    action: 'control',
+    hostId: roomid,
+    guestInfo: JSON.stringify([...peerlist])
+  });
 });
+
 function writeSocket(socket) {
   console.log(peerlist);
   const obj = [];
@@ -503,6 +517,7 @@ function writeSocket(socket) {
     clients.splice(clients.indexOf(socket), 1);
   }
 }
+
 function addAudio() {
   const constraints = {
     audio: true, // mandatory.
@@ -519,6 +534,7 @@ function addAudio() {
   };
   navigator.getUserMedia(constraints, successCallback, errorCallback);
 }
+
 function tcpInHandler(data, socket) {
   console.log('frank says:', data.toString());
   if (data === 'ok') {
@@ -542,6 +558,7 @@ function tcpInHandler(data, socket) {
   }
   socketEmitter.emit('update');
 }
+
 function peelistHandler(lastlist) {
   lastlist.forEach((item, key) => {
     if (peerlist.get(key)) {
@@ -558,21 +575,21 @@ function peelistHandler(lastlist) {
         if (peerlist.get(key).status === 'play') {
           console.log(connection);
           connection.sendCustomMessage({
-                                         messageFor: key,
-                                         action: 'play',
-                                         hostId: roomid,
-                                         password: argv.pass,
-                                         guestInfo: connection.extra,
-                                       });
+            messageFor: key,
+            action: 'play',
+            hostId: roomid,
+            password: argv.pass,
+            guestInfo: connection.extra,
+          });
         }
         if (peerlist.get(key).status === 'stop') {
           connection.sendCustomMessage({
-                                         messageFor: key,
-                                         action: 'stop',
-                                         hostId: roomid,
-                                         password: argv.pass,
-                                         guestInfo: connection.extra,
-                                       });
+            messageFor: key,
+            action: 'stop',
+            hostId: roomid,
+            password: argv.pass,
+            guestInfo: connection.extra,
+          });
         }
         console.log(socketEmitter);
         socketEmitter.emit('update');
@@ -580,22 +597,14 @@ function peelistHandler(lastlist) {
     }
   });
   /* if theres no playing peer clear stream and add stream until least one playing*/
-  if ([...peerlist].filter(peer => peer[1].direction === 'out' && peer[1].status === 'play').length === 0) {
-    connection.clearStream();
-  } else {
-    if (connection.attachStreams.length === 0) {
-      connection.setStream();
-    }
-  }
-  if (connection.peers.getAllParticipants().length > 0 && connection.attachStreams === 0) {
-    connection.setStream();
-  } else {
-    connection.clearStream();
-  }
+
+
+
   /* if([...peerlist].filter(peer => peer[1].direction === 'out' && peer[1].status === 'play').length === 0 ){
    connection.setStream();
    }*/
 }
+
 setInterval(() => {
   peerlist.forEach((item, key) => {
     connection.checkPresence(key, (isRoomExist, peerKey) => {
@@ -605,6 +614,15 @@ setInterval(() => {
       }
     });
   });
+  if ([...peerlist].filter(peer => peer[1].direction === 'out' && peer[1].status === 'play').length === 0) {
+    if (connection.peers.getAllParticipants().length === 0 && connection.attachStreams.length>0 ) {
+      console.log('clear stream1', peerlist,connection.peers.getAllParticipants().length )
+      connection.clearStream();
+    }
+  } else if (connection.attachStreams.length === 0) {
+    connection.setStream();
+  }
+
 }, 2000);
 connection.onUserStatusChanged = function (event) {
   /* console.log('statuschange', event);
@@ -616,5 +634,6 @@ connection.onUserStatusChanged = function (event) {
    connection.setStream();
    }*/
   // winston.log('info', event, {userid: userid});
+
 };
 
