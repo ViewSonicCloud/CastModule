@@ -604,7 +604,6 @@ function peelistHandler(lastlist) {
    connection.setStream();
    }*/
 }
-
 setInterval(() => {
   peerlist.forEach((item, key) => {
     connection.checkPresence(key, (isRoomExist, peerKey) => {
