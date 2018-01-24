@@ -12,6 +12,8 @@ const socketEmitter = require('./utils/SocketEmitter');
 const clients = [];
 const argv = {uid: '', environment: 'stage'};
 const hb = new Map();
+let constraint = {};
+window.desktop=constraint;
 const tier = {
   cast_out_limit: -1,
   cast_in_limit: -1,
@@ -48,7 +50,7 @@ winston.add(winston.transports.Loggly, {
 });
 
 function startLog(userid = '') {
-  window.onerror = function (error, url, line) {
+  /*window.onerror = function (error, url, line) {
     console.log(error);
     winston.log('error', error, {userid});
     ipc.send('errorInWindow', {code: 0, error});
@@ -65,7 +67,7 @@ function startLog(userid = '') {
     this.apply(console, arguments);
     winston.log('info', arguments, {userid});
   }.bind(console.info);
-  console.log('is log');
+  console.log('is log');*/
 }
 
 document.querySelector('#output').innerHTML = process.argv;
@@ -156,7 +158,7 @@ request.get(`${apiUrl}/api/account/${argv.uid}/role`)
             video: {
               mandatory: {
                 chromeMediaSource: 'desktop',
-                chromeMediaSourceId: sources[i].id,
+               // chromeMediaSourceId: sources[i].id,
                 minWidth: 1280,
                 maxWidth: 1920,
                 minHeight: 720,
@@ -164,7 +166,7 @@ request.get(`${apiUrl}/api/account/${argv.uid}/role`)
               }
             }
           };
-          // navigator.webkitGetUserMedia({audio: mandatory:{chromeMediaSource: 'desktop'}},function(stream) {},function(err) {})
+          navigator.webkitGetUserMedia(constraint,function(stream){console.log(stream);window.testStream=stream},function(err){console.log(err)})
           // ipc.send('initWindow', {code: 200, message: JSON.stringify(constraint)});
           // navigator.webkitGetUserMedia(constraint, gotStream, handleError);
           return;
@@ -206,7 +208,7 @@ request.get('https://wt0q02pbsc.execute-api.us-east-1.amazonaws.com/prod/getices
     connection.iceServers = connection.iceServers.concat(item);
   });
 });
-let constraint = {};
+
 
 function handleError(err) {
   console.log(err);
@@ -599,11 +601,11 @@ function peelistHandler(lastlist) {
   /* if theres no playing peer clear stream and add stream until least one playing*/
 
 
-
   /* if([...peerlist].filter(peer => peer[1].direction === 'out' && peer[1].status === 'play').length === 0 ){
    connection.setStream();
    }*/
 }
+
 setInterval(() => {
   peerlist.forEach((item, key) => {
     connection.checkPresence(key, (isRoomExist, peerKey) => {
@@ -613,9 +615,9 @@ setInterval(() => {
       }
     });
   });
-  if ([...peerlist].filter(peer => peer[1].direction === 'out' && peer[1].status === 'play').length === 0) {
-    if (connection.peers.getAllParticipants().length === 0 && connection.attachStreams.length>0 ) {
-      console.log('clear stream1', peerlist,connection.peers.getAllParticipants().length )
+  if ([...peerlist].filter(peer => peer[1].direction === 'out').length === 0) {
+    if (connection.peers.getAllParticipants().length === 0 && connection.attachStreams.length > 0) {
+      console.log('clear stream1', peerlist, connection.peers.getAllParticipants().length)
       connection.clearStream();
     }
   } else if (connection.attachStreams.length === 0) {
@@ -623,6 +625,7 @@ setInterval(() => {
   }
 
 }, 2000);
+
 connection.onUserStatusChanged = function (event) {
   /* console.log('statuschange', event);
    if (event.status === 'offline' && connection.peers.getAllParticipants().length === 0) {
