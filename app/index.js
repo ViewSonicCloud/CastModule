@@ -1,5 +1,5 @@
 import Rx from 'rxjs/Rx';
-import {remote, desktopCapturer} from 'electron';
+import {remote, desktopCapturer,screen} from 'electron';
 import connection from './utils/connection';
 import peerlist from './utils/peerlist';
 
@@ -14,6 +14,8 @@ const argv = {uid: '', environment: 'stage'};
 const hb = new Map();
 let constraint = {};
 window.desktop=constraint;
+
+
 const tier = {
   cast_out_limit: -1,
   cast_in_limit: -1,
@@ -50,7 +52,7 @@ winston.add(winston.transports.Loggly, {
 });
 
 function startLog(userid = '') {
-  /*window.onerror = function (error, url, line) {
+  window.onerror = function (error, url, line) {
     console.log(error);
     winston.log('error', error, {userid});
     ipc.send('errorInWindow', {code: 0, error});
@@ -67,7 +69,7 @@ function startLog(userid = '') {
     this.apply(console, arguments);
     winston.log('info', arguments, {userid});
   }.bind(console.info);
-  console.log('is log');*/
+  console.log('is log');
 }
 
 document.querySelector('#output').innerHTML = process.argv;
@@ -150,15 +152,16 @@ request.get(`${apiUrl}/api/account/${argv.uid}/role`)
       for (let i = 0; i < sources.length; i++) {
         if (sources[i].id === 'screen:0:0') {
           constraint = {
-            audio: connection.DetectRTC.audioOutputDevices.length > 0 ? {
+            audio:{
               mandatory: {
                 chromeMediaSource: 'desktop',
+                //chromeMediaSourceId: sources[i].id,
               }
-            } : false,
+            },
             video: {
               mandatory: {
                 chromeMediaSource: 'desktop',
-               // chromeMediaSourceId: sources[i].id,
+                chromeMediaSourceId: sources[i].id,
                 minWidth: 1280,
                 maxWidth: 1920,
                 minHeight: 720,

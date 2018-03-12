@@ -1,7 +1,7 @@
 {
   "name": "viewboardcast",
   "productName": "myViewBoard Casting",
-  "version": "1.9.180119",
+  "version": "1.10.180124",
   "description": "ViewBoard Casting",
   "main": "./main.prod.js",
   "author": {
@@ -11,8 +11,5 @@
     "postinstall": "npm rebuild --runtime=electron --target=1.7.9 --disturl=https://atom.io/download/atom-shell --build-from-source"
   },
   "license": "MIT",
-  "dependencies": {
-  }
+  "dependencies": {}
 }
-
-

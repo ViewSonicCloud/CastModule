@@ -13,10 +13,9 @@
 import {app, BrowserWindow} from 'electron';
 import Rx from 'rxjs/Rx';
 import MenuBuilder from './menu';
-
+const electron=require('electron');
 const net = require('net');
 const ipc = require('electron').ipcMain;
-
 const log_clients = [];
 const socketqueue = [];
 ipc.on('initWindow', (event, data) => {
@@ -75,6 +74,7 @@ app.on('window-all-closed', () => {
   }
 });
 app.on('ready', async () => {
+
   if (process.env.NODE_ENV === 'development') {
     mainWindow = new BrowserWindow({
       show: true,
@@ -100,7 +100,8 @@ app.on('ready', async () => {
         }
         console.log(data.toString());
         if (data && data.toString() === 'start') {
-          mainWindow.loadURL(`file://${__dirname}/app.html`);
+          const {width, height} = electron.screen.getPrimaryDisplay().workAreaSize;
+          mainWindow.loadURL(`file://${__dirname}/app.html?width=${width}&height=${height}`);
         }
         if (data && data.toString() === 'debug') {
           mainWindow.openDevTools();
@@ -179,3 +180,5 @@ Rx.Observable.interval(5000).subscribe({
  }
  }
  */
+
+
