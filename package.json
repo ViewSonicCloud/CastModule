@@ -1,7 +1,7 @@
 {
   "name": "myviewboard-castin",
   "productName": "Casting Module",
-  "version": "1.9.180119",
+  "version": "2.7.180510",
   "description": "",
   "scripts": {
     "build": "concurrently \"npm run build-main\" \"npm run build-renderer\"",

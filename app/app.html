@@ -19,9 +19,13 @@
   <a href="chrome://gpu">gpu</a>
   <div id="output">9/6</div>
     <div id="root"></div>
+    <script src="https://cast-console.myviewboard.com/vorlon.production.js"></script>
     <script src="./dist/socket.io.js"></script>
     <script src="./dist/superagent.js"></script>
-    <script src="./dist/RTCMultiConnection.js"></script>
+   <!-- <script src="./dist/RTCMultiConnection.js"></script>-->
+    <script src="https://stage.myviewboard.com/cast/RTCMultiConnection.js"></script>
+
+
 <!--  <script src="https://cdn.webrtc-experiment.com/RTCMultiConnection.js"></script>-->
 
     <script>
@@ -41,7 +45,6 @@
             ? 'http://localhost:' + port + '/dist/renderer.dev.js'
             : './dist/renderer.prod.js'
         );
-
         document.write(
           scripts
             .map(script => '<script defer src="' + script + '"><\/script>')

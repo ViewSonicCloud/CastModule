@@ -17,7 +17,7 @@ if (typeof MediaStream !== 'undefined' && !('stop' in MediaStream.prototype)) {
 window.connection = connection;
 connection.bandwidth = {
   audio: 128,  // 50 kbps
-  video: 1500, // 256 kbps
+  video: 2000, // 256 kbps
   screen: 2000 // 300 kbps
 };
 connection.dontCaptureUserMedia = true;
@@ -28,4 +28,6 @@ connection.codecs.video = 'H264';
 connection.session = {
   data: true
 };
+
+
 export default connection;

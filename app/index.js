@@ -1,5 +1,5 @@
 import Rx from 'rxjs/Rx';
-import {remote, desktopCapturer,screen} from 'electron';
+import {remote, desktopCapturer, screen} from 'electron';
 import connection from './utils/connection';
 import peerlist from './utils/peerlist';
 
@@ -13,7 +13,7 @@ const clients = [];
 const argv = {uid: '', environment: 'stage'};
 const hb = new Map();
 let constraint = {};
-window.desktop=constraint;
+window.desktop = constraint;
 
 
 const tier = {
@@ -44,6 +44,15 @@ process.argv.forEach((item) => {
     //  ipc.send('errorInWindow', {code: 103, error: 'process stage  is not defined'});
   }
 });
+
+window['argv']=argv;
+
+var vorlon;
+if (VORLON && VORLON.Production) {
+  vorlon = new VORLON.Production("https://cast-console.myviewboard.com", argv.environment + '_cm');
+  vorlon.setIdentity(argv.uid);
+  vorlon.activate();
+}
 winston.add(winston.transports.Loggly, {
   token: '9c45b61e-f16e-449b-8576-8c8493271487',
   subdomain: 'vsssicloud',
@@ -106,7 +115,7 @@ request.get(`${apiUrl}/api/account/${argv.uid}/role`)
     connection.extra = {
       id: res.body.id,
       name: res.body.name,
-      email: res.body.email
+      email: ''//res.body.email
     };
     roomid = res.body.name.split(' ').join('_').toLowerCase();
     startLog(roomid);
@@ -152,7 +161,7 @@ request.get(`${apiUrl}/api/account/${argv.uid}/role`)
       for (let i = 0; i < sources.length; i++) {
         if (sources[i].id === 'screen:0:0') {
           constraint = {
-            audio:{
+            audio: {
               mandatory: {
                 chromeMediaSource: 'desktop',
                 //chromeMediaSourceId: sources[i].id,
@@ -169,7 +178,12 @@ request.get(`${apiUrl}/api/account/${argv.uid}/role`)
               }
             }
           };
-          navigator.webkitGetUserMedia(constraint,function(stream){console.log(stream);window.testStream=stream},function(err){console.log(err)})
+          navigator.webkitGetUserMedia(constraint, function (stream) {
+            console.log(stream);
+            window.testStream = stream;
+          }, function (err) {
+            console.log(err);
+          })
           // ipc.send('initWindow', {code: 200, message: JSON.stringify(constraint)});
           // navigator.webkitGetUserMedia(constraint, gotStream, handleError);
           return;
@@ -196,7 +210,10 @@ connection.clearStream = function () {
   connection.attachStreams = [];
 }
 connection.sendCustomMessage = function (message) {
-  if (!connection.socket) connection.connectSocket();
+  if (!connection.socket) {
+    connection.connectSocket();
+  }
+
   console.log(message, connection.socketCustomEvent);
   connection.socket.emit(connection.socketCustomEvent, message);
 };
@@ -229,6 +246,7 @@ function gotStream(stream) {
   console.log(stream);
   connection.attachStreams = [];
   connection.addStream(stream);
+
   const constraints = {
     audio: true, // mandatory.
   };
@@ -256,6 +274,7 @@ function SignalHandShake() {
     } else {
       connection.openOrJoin(roomid, argv.pass);
     }
+
     if (!connection.socket) connection.connectSocket();// .onerror((err)=>console.log(err));
     connection.socket.on(connection.socketCustomEvent, (message) => {
       // console.log(message);
@@ -371,7 +390,13 @@ function SignalHandShake() {
         }
         if (message.action && message.action === 'join') {
           console.log(message);
+
+          console.log(peerlist, window.peerlist);
+
           if (message.guestInfo.sid) {
+
+            console.log(message.guestInfo.sid);
+
             peerlist.forEach((item) => {
               if (item.sid === message.guestInfo.sid && item.direction === 'out') {
                 connection.sendCustomMessage({
@@ -461,6 +486,18 @@ function SignalHandShake() {
   ipc.send('initWindow', {code: 200, error: null});
 }
 
+/*
+window.navigator.connection.onchange=function(){
+  setTimeout(function(){
+    //location.reload(false);
+   // connection.clearStream();
+   // connection.close();
+
+    SignalHandShake();
+  },100);
+};
+*/
+
 tcp_start();
 
 function tcp_start() {
@@ -470,6 +507,7 @@ function tcp_start() {
     socket.on('data', (data) => {
       // socket.write(roomid);
       console.log(data);
+      console.log('checkaddress', socket.remoteAddress !== '::ffff:127.0.0.1');
       if (socket.remoteAddress !== '::ffff:127.0.0.1') {
         // return;
       }
@@ -523,7 +561,7 @@ function writeSocket(socket) {
   }
 }
 
-function addAudio() {
+/*function addAudio() {
   const constraints = {
     audio: true, // mandatory.
   };
@@ -538,7 +576,7 @@ function addAudio() {
     });
   };
   navigator.getUserMedia(constraints, successCallback, errorCallback);
-}
+}*/
 
 function tcpInHandler(data, socket) {
   console.log('frank says:', data.toString());
@@ -551,6 +589,8 @@ function tcpInHandler(data, socket) {
     });
     // socket.write(JSON.stringify([...peerlist]));
     writeSocket(socket);
+  } else if (data.indexOf('--token=') !== -1) {
+
   } else {
     const lastlist = new Map(peerlist);
     const dataobj = JSON.parse(data.toString().trim());
@@ -610,10 +650,16 @@ function peelistHandler(lastlist) {
 }
 
 setInterval(() => {
+  if (connection.socket && !connection.socket.connected) {
+    setTimeout(function () {
+      connection.connectSocket();
+      SignalHandShake();
+    }, 200);
+  }
   peerlist.forEach((item, key) => {
     connection.checkPresence(key, (isRoomExist, peerKey) => {
       if (!isRoomExist) {
-        peerlist.delete(peerKey);
+        //peerlist.delete(peerKey);
         socketEmitter.emit('update');
       }
     });
@@ -629,16 +675,16 @@ setInterval(() => {
 
 }, 2000);
 
-connection.onUserStatusChanged = function (event) {
-  /* console.log('statuschange', event);
+/*connection.onUserStatusChanged = function (event) {
+  /!* console.log('statuschange', event);
    if (event.status === 'offline' && connection.peers.getAllParticipants().length === 0) {
    connection.clearStream();
    }
    console.log(connection.peers.getAllParticipants().length, connection.attachStreams)
    if (event.status === 'online' && connection.peers.getAllParticipants().length > 0 && connection.attachStreams.length === 0) {
    connection.setStream();
-   }*/
+   }*!/
   // winston.log('info', event, {userid: userid});
+};*/
 
-};
 
