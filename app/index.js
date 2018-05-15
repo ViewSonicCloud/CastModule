@@ -659,7 +659,7 @@ setInterval(() => {
   peerlist.forEach((item, key) => {
     connection.checkPresence(key, (isRoomExist, peerKey) => {
       if (!isRoomExist) {
-        //peerlist.delete(peerKey);
+        peerlist.delete(peerKey);
         socketEmitter.emit('update');
       }
     });
@@ -674,17 +674,3 @@ setInterval(() => {
   }
 
 }, 2000);
-
-/*connection.onUserStatusChanged = function (event) {
-  /!* console.log('statuschange', event);
-   if (event.status === 'offline' && connection.peers.getAllParticipants().length === 0) {
-   connection.clearStream();
-   }
-   console.log(connection.peers.getAllParticipants().length, connection.attachStreams)
-   if (event.status === 'online' && connection.peers.getAllParticipants().length > 0 && connection.attachStreams.length === 0) {
-   connection.setStream();
-   }*!/
-  // winston.log('info', event, {userid: userid});
-};*/
-
-

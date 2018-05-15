@@ -1,7 +1,7 @@
 {
   "name": "viewboardcast",
   "productName": "myViewBoard Casting",
-  "version": "2.6.180511",
+  "version": "2.6.180515",
   "description": "ViewBoard Casting",
   "main": "./main.prod.js",
   "author": {
@@ -13,3 +13,4 @@
   "license": "MIT",
   "dependencies": {}
 }
+
